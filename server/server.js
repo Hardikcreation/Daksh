@@ -28,10 +28,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const allowedOrigins = [
-  'http://82.29.165.206:4173',
-  'http://82.29.165.206:4174',
-  "http://localhost:5173",
-  "http://localhost:5174"
+  // 'http://82.29.165.206:4173',
+  // 'http://82.29.165.206:4174',
+  // "http://localhost:5173",
+  // "http://localhost:5174"
+'https://daksh-client.onrender.com',
+'https://daksh-admin.onrender.com'
 ];
 
 app.use(
