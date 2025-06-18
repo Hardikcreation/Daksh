@@ -1,6 +1,9 @@
 import Partner from "../models/Partner.js";
 import PartnerDocument from "../models/partnerDocument.js";
+import express from "express";
+const app = express();
 
+app.use('/uploads', express.static('uploads'));
 // Upload documents
 export const uploadPartnerDocuments = async (req, res) => {
   try {
@@ -76,26 +79,36 @@ export const checkDocumentsStatus = async (req, res) => {
   }
 };
 
-// Fetch all partner documents
+// Fetch all partner documents (for ADMIN)
 export const getAllPartnerDocuments = async (req, res) => {
   try {
     const docs = await PartnerDocument.find()
-      .populate("partner", "name email verificationStatus status")
+      .populate("partner") // Get all partner info, including personalDetails
       .lean();
 
-    const result = docs.map(doc => ({
-      partnerDocId: doc._id,
-      documents: doc.documents,
-      status: doc.status || "pending",
-      verificationStatus: doc.partner?.verificationStatus ?? doc.status ?? "pending",
-      _id: doc.partner?._id,
-      name: doc.partner?.name ?? doc.name,
-      email: doc.partner?.email ?? doc.email,
-    }));
+    const result = docs.map(doc => {
+      const pd = doc.partner?.personalDetails || {};
+      return {
+        partnerDocId: doc._id,
+        documents: doc.documents,
+        status: doc.status || "pending",
+        verificationStatus: doc.partner?.verificationStatus ?? doc.status ?? "pending",
+        _id: doc.partner?._id,
+        name: doc.partner?.name ?? doc.name,
+        email: doc.partner?.email ?? doc.email,
+        personalDetails: {
+          fullName: pd.fullName ?? doc.partner?.name ?? doc.name,
+          dob: pd.dob ?? "",
+          gender: pd.gender ?? "",
+          address: pd.address ?? "",
+          phone: pd.phone ?? doc.partner?.phone,
+          email: pd.email ?? doc.partner?.email ?? doc.email,
+        }
+      };
+    });
 
     res.json(result);
   } catch (err) {
-    console.error("Failed to fetch partner documents:", err.message);
     res.status(500).json({ message: "Failed to fetch documents" });
   }
 };

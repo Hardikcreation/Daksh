@@ -3,57 +3,60 @@ import nodemailer from "nodemailer";
 
 /**
  * Assigns the next eligible partner to the order.
- * - Skips partners in order.rejectedPartners.
+ * - Uses a single query to fetch the next eligible partner.
+ * - Uses $nin for rejectedPartners and _id for atomic selection.
  * - Sets requestExpiresAt to 30 seconds from now.
- * - Marks order as "NoServiceProvider" if none left.
- * - Sends email notification to the new partner (optional).
+ * - Marks order as "No service provider is available" if none left.
+ * - Sends email notification to the new partner.
  */
 export const assignNextAvailablePartner = async (order) => {
   try {
     const serviceCategory = order.items[0]?.title?.trim();
     if (!serviceCategory) {
-      order.requestStatus = "No service provider is available";
-      order.status = "Declined";
-      order.assignedPartner = null;
-      order.requestExpiresAt = null;
-      await order.save();
+      await order.updateOne({
+        $set: {
+          requestStatus: "No service provider is available",
+          status: "Declined",
+          assignedPartner: null,
+          requestExpiresAt: null,
+        }
+      });
       return;
     }
 
-    // Find all eligible partners for the service
-    const eligiblePartners = await Partner.find({
+    // Directly fetch the next eligible partner (no need to fetch all and JS filter)
+    const newPartner = await Partner.findOne({
       category: serviceCategory,
       isApproved: true,
       isVerified: true,
       isDeclined: false,
       verificationStatus: "verified",
       isDocumentsSubmitted: true,
-    });
+      _id: { $nin: order.rejectedPartners || [] }
+    }).sort({ createdAt: 1 }); // FIFO
 
-    // Exclude partners already tried
-    const previouslyTriedPartnerIds = (order.rejectedPartners || []).map(p => p.toString());
-    const availablePartners = eligiblePartners.filter(
-      (partner) => !previouslyTriedPartnerIds.includes(partner._id.toString())
-    );
-
-    if (availablePartners.length === 0) {
-      order.requestStatus = "No service provider is available";
-      order.status = "Declined";
-      order.assignedPartner = null;
-      order.requestExpiresAt = null;
-      await order.save();
-      console.log("No service providers left; marked as No service provider is available/Declined:", order._id);
+    if (!newPartner) {
+      await order.updateOne({
+        $set: {
+          requestStatus: "No service provider is available",
+          status: "Declined",
+          assignedPartner: null,
+          requestExpiresAt: null,
+        }
+      });
+      console.log("No eligible partners left for order", order._id);
       return;
     }
 
-    // Assign the next available partner (FIFO)
-    const newPartner = availablePartners[0];
-    order.assignedPartner = newPartner._id;
-    order.requestStatus = "Pending";
-    order.requestExpiresAt = new Date(Date.now() + 30 * 1000); // 30 seconds from now
-    await order.save();
+    await order.updateOne({
+      $set: {
+        assignedPartner: newPartner._id,
+        requestStatus: "Pending",
+        requestExpiresAt: new Date(Date.now() + 30 * 1000),
+      }
+    });
 
-    // Optionally: send notification to newPartner here
+    // Notify
     try {
       const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -78,18 +81,16 @@ export const assignNextAvailablePartner = async (order) => {
       console.error("Partner notification failed:", notifyErr);
     }
 
-    console.log(
-      "Order reassigned to partner:",
-      newPartner._id,
-      "Order:",
-      order._id
-    );
+    console.log("Order reassigned to partner:", newPartner._id, "Order:", order._id);
   } catch (err) {
     console.error("Failed to reassign order:", err);
-    order.requestStatus = "No service provider is available";
-    order.status = "Declined";
-    order.assignedPartner = null;
-    order.requestExpiresAt = null;
-    await order.save();
+    await order.updateOne({
+      $set: {
+        requestStatus: "No service provider is available",
+        status: "Declined",
+        assignedPartner: null,
+        requestExpiresAt: null,
+      }
+    });
   }
 };

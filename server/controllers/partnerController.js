@@ -150,29 +150,33 @@ export const deletePartner = async (req, res) => {
     res.status(500).json({ message: 'Delete failed' });
   }
 };
-
 export const getPartnerDashboardStats = async (req, res) => {
   try {
     const partnerId = req.partner._id;
 
-    const totalOrders = await Order.countDocuments({ assignedPartner: partnerId });
+    // Only count orders that the partner has ACCEPTED (not just assigned, not declined, not expired)
+    const totalOrders = await Order.countDocuments({
+      assignedPartner: partnerId,
+      requestStatus: "Accepted"
+    });
 
     const completedOrders = await Order.countDocuments({
       assignedPartner: partnerId,
-      completedAt: { $ne: null } // ✅ completed only if completedAt is set
+      status: "Completed"
     });
 
+    // Incomplete = accepted but not completed yet
     const incompleteOrders = await Order.countDocuments({
       assignedPartner: partnerId,
       requestStatus: "Accepted",
-      completedAt: null // ✅ still pending work
+      status: { $ne: "Completed" }
     });
 
     const earnings = await Order.aggregate([
       {
         $match: {
           assignedPartner: partnerId,
-          completedAt: { $ne: null }
+          status: "Completed"
         }
       },
       {

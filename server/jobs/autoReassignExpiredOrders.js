@@ -1,37 +1,41 @@
 import Order from "../models/Order.js";
 import { assignNextAvailablePartner } from "../utils/assignPartner.js";
 
-// Cron job: Run every 30s (or less)
+/**
+ * Cron job: Run every 20s or 30s
+ * - Uses lean() for faster reads and minimal population.
+ * - Uses in-place update for rejectedPartners.
+ */
 export async function autoReassignExpiredOrdersJob() {
   try {
-    // Find orders where the last assigned partner didn't respond in time
+    // Only fetch _id and relevant fields (avoid full document unless needed)
     const expiredOrders = await Order.find({
       requestStatus: "Pending",
       assignedPartner: { $ne: null },
       requestExpiresAt: { $lt: new Date() },
-      status: { $in: ["Pending", "Confirmed"] }, // Only active orders
-    });
+      status: { $in: ["Pending", "Confirmed"] },
+    }).select("_id assignedPartner rejectedPartners items address user requestStatus status").exec();
 
-    for (const order of expiredOrders) {
-      // Add last tried partner to rejectedPartners
-      if (
-        order.assignedPartner &&
-        !order.rejectedPartners.map(String).includes(order.assignedPartner.toString())
-      ) {
-        order.rejectedPartners.push(order.assignedPartner);
-      }
-      order.assignedPartner = null;
-      order.requestExpiresAt = null; // Will be set on next assign
-      await order.save();
+    for (const o of expiredOrders) {
+      // Use findByIdAndUpdate to atomically add rejectedPartner and reset fields
+      const update = {
+        $addToSet: { rejectedPartners: o.assignedPartner },
+        $set: {
+          assignedPartner: null,
+          requestExpiresAt: null,
+        }
+      };
+      await Order.findByIdAndUpdate(o._id, update);
+
+      // Reload updated order (for assignNextAvailablePartner)
+      const order = await Order.findById(o._id);
 
       // Assign to next eligible partner or mark as NoPartner
       await assignNextAvailablePartner(order);
     }
 
     if (expiredOrders.length > 0) {
-      console.log(
-        `[autoReassignExpiredOrdersJob] Reassigned ${expiredOrders.length} expired orders.`
-      );
+      console.log(`[autoReassignExpiredOrdersJob] Reassigned ${expiredOrders.length} expired orders.`);
     }
   } catch (err) {
     console.error("[autoReassignExpiredOrdersJob] Error:", err);

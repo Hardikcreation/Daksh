@@ -17,42 +17,30 @@ export const assignPartnerToOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { partnerId } = req.body;
+    // Only fetch what you need
     const order = await Order.findById(orderId).populate("user", "name email");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const availablePartner = await Partner.findOne({
+    const partner = await Partner.findOne({
       _id: partnerId,
       isVerified: true,
       isApproved: true,
-      isDeclined: false,
       verificationStatus: "verified",
-    });
-    if (!availablePartner) return res.status(404).json({ message: "No available partner found" });
+    }).select("email");
+    if (!partner) return res.status(404).json({ message: "Partner not found or unavailable" });
 
-    order.assignedPartner = availablePartner._id;
+    order.assignedPartner = partner._id;
     order.requestStatus = "Pending";
-    order.requestExpiresAt = new Date(Date.now() + 30 * 1000); // 30 seconds
-    // Optionally reset rejectedPartners or clear it if admin overrides
-    order.rejectedPartners = order.rejectedPartners || [];
-    if (!order.rejectedPartners.includes(availablePartner._id.toString())) {
-      order.rejectedPartners.push(availablePartner._id.toString());
-    }
+    order.requestExpiresAt = new Date(Date.now() + 30 * 1000);
     await order.save();
 
     // Notify partner
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: availablePartner.email,
+      to: partner.email,
       subject: "Manual Service Assignment",
-      html: `
-        <h3>You have been manually assigned a new service request</h3>
-        <p><strong>Customer:</strong> ${order.user.name}</p>
-        <p><strong>Email:</strong> ${order.user.email}</p>
-        <p><strong>Service:</strong> ${order.items[0].title}</p>
-        <p><strong>Scheduled Time:</strong> ${order.address.timeSlot}</p>
-        <p><strong>Address:</strong> ${order.address.fullAddress}</p>
-        <p>Please log in to your dashboard to accept or decline within 30 seconds.</p>
-      `,
+      html: `<p>You have a new service request from ${order.user.name}</p>
+             <p>Address: ${order.address?.fullAddress || ""}</p>`,
     });
 
     res.status(200).json({
@@ -69,51 +57,47 @@ export const assignPartnerToOrder = async (req, res) => {
 export const assignPartnerAutomatically = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findById(orderId).populate("user");
+    const order = await Order.findById(orderId).populate("user", "name email");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const serviceName = order.items[0]?.title?.trim().toLowerCase();
-    if (!serviceName) return res.status(400).json({ message: "Service name missing in order" });
-
-    // Find partner not in rejected list
-    const availablePartner = await Partner.findOne({
-      category: new RegExp(`^${serviceName}$`, 'i'),
-      isApproved: true,
+    // Use $nin for rejectedPartners, and only select the first eligible partner
+    const partner = await Partner.findOne({
+      category: new RegExp(`^${serviceName}$`, "i"),
       isVerified: true,
-      isDeclined: false,
+      isApproved: true,
       verificationStatus: "verified",
       isDocumentsSubmitted: true,
-      _id: { $nin: order.rejectedPartners || [] }
-    });
+      _id: { $nin: order.rejectedPartners || [] },
+    }).select("email name");
 
-    if (!availablePartner) {
+    if (!partner) {
       order.assignedPartner = null;
       order.requestStatus = "NoPartner";
       await order.save();
       return res.status(404).json({ message: `No available partner found for category '${serviceName}'` });
     }
 
-    order.assignedPartner = availablePartner._id;
+    order.assignedPartner = partner._id;
     order.requestStatus = "Pending";
     order.requestExpiresAt = new Date(Date.now() + 30 * 1000);
     await order.save();
 
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: availablePartner.email,
+      to: partner.email,
       subject: "New Service Request",
       html: `
-        <h3>New ${serviceName} Service Request</h3>
-        <p><strong>Customer:</strong> ${order.user.name}</p>
-        <p><strong>Time Slot:</strong> ${order.address.timeSlot}</p>
-        <p><strong>Address:</strong> ${order.address.fullAddress}</p>
+       <p>New service request from ${order.user.name}</p>
+             <p>Time Slot: ${order.address?.timeSlot || ""}</p>
+             <p>Address: ${order.address?.fullAddress || ""}</p>
         <p>Please accept or decline within 30 seconds in your dashboard.</p>
       `,
     });
 
     res.status(200).json({
       message: "Partner assigned based on category",
-      partner: availablePartner,
+      partner,
     });
   } catch (err) {
     console.error("🔥 assignPartnerAutomatically error:", err);
@@ -126,20 +110,15 @@ export const partnerRespondToRequest = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { response } = req.body; // "Accepted" or "Declined"
-    const partnerId = req.partner?._id?.toString() || req.partnerId; // depends on your middleware
+    const partnerId = req.partner?._id?.toString() || req.partnerId;
 
-    const order = await Order.findById(orderId)
-      .populate("user")
-      .populate("assignedPartner");
-
+    const order = await Order.findById(orderId).populate("assignedPartner");
     if (!order) return res.status(404).json({ message: "Order not found" });
-
     if (!order.assignedPartner || order.assignedPartner._id.toString() !== partnerId) {
-      return res.status(403).json({ message: "Unauthorized partner" });
+      return res.status(403).json({ message: "Unauthorized" });
     }
-
-    if (new Date() > new Date(order.requestExpiresAt)) {
-      return res.status(400).json({ message: "Request has expired" });
+    if (new Date() > order.requestExpiresAt) {
+      return res.status(400).json({ message: "Request expired" });
     }
 
     if (response === "Accepted") {
@@ -147,26 +126,34 @@ export const partnerRespondToRequest = async (req, res) => {
       order.requestStatus = "Accepted";
       order.requestExpiresAt = null;
       await order.save();
-      return res.status(200).json({ message: "Request accepted successfully" });
-    } else if (response === "Declined") {
-      // Add to rejectedPartners so not retried in reassignment
-      if (!order.rejectedPartners.includes(order.assignedPartner._id.toString())) {
-        order.rejectedPartners.push(order.assignedPartner._id.toString());
-      }
-      order.assignedPartner = null;
-      order.requestStatus = "Pending";
-      order.status = "Declined";
-      order.requestExpiresAt = null;
-      await order.save();
+      return res.status(200).json({ message: " accepted " });
 
-      await assignNextAvailablePartner(order); // send to next partner
-      return res.status(200).json({ message: "Request declined and reassigned" });
     }
-    return res.status(400).json({ message: "Invalid response" });
+
+    if (response === "Declined") {
+      // Direct atomic update for rejectedPartners
+      await Order.updateOne(
+        { _id: orderId },
+        {
+          $addToSet: { rejectedPartners: partnerId },
+          $set: {
+            assignedPartner: null,
+            requestStatus: "Declined",
+            requestExpiresAt: null,
+          },
+        }
+      );
+      // Reload updated order for next assignment
+      const updatedOrder = await Order.findById(orderId);
+      await assignNextAvailablePartner(updatedOrder);
+      return res.status(200).json({ message: "Declined and reassigned" });
+    }
+
+    res.status(400).json({ message: "Invalid response" });
 
   } catch (err) {
     console.error("❌ Partner response error:", err);
-    return res.status(500).json({ message: "Failed to respond to request", error: err.message });
+    res.status(500).json({ message: "Failed to respond to request", error: err.message });
   }
 };
 
@@ -196,8 +183,9 @@ export const startOrder = async (req, res) => {
     const { orderId } = req.params;
     const partnerId = req.partner?._id?.toString() || req.partnerId;
 
-    const order = await Order.findById(orderId);
-    if (!order || order.assignedPartner.toString() !== partnerId) {
+    // Use findOne for both checks
+    const order = await Order.findOne({ _id: orderId, assignedPartner: partnerId });
+    if (!order) {
       return res.status(404).json({ message: "Order not found or unauthorized" });
     }
 
@@ -218,8 +206,8 @@ export const completeOrder = async (req, res) => {
     const { orderId } = req.params;
     const partnerId = req.partner?._id?.toString() || req.partnerId;
 
-    const order = await Order.findById(orderId);
-    if (!order || order.assignedPartner.toString() !== partnerId) {
+    const order = await Order.findOne({ _id: orderId, assignedPartner: partnerId });
+    if (!order) {
       return res.status(404).json({ message: "Order not found or unauthorized" });
     }
 
@@ -246,8 +234,12 @@ export const submitFeedback = async (req, res) => {
     const { rating, review } = req.body;
     const partnerId = req.partner?._id?.toString() || req.partnerId;
 
-    const order = await Order.findById(orderId);
-    if (!order || order.assignedPartner.toString() !== partnerId || !order.completedAt) {
+    const order = await Order.findOne({
+      _id: orderId,
+      assignedPartner: partnerId,
+      completedAt: { $ne: null }
+    });
+    if (!order) {
       return res.status(400).json({ message: "Order not eligible for feedback" });
     }
 
