@@ -1,4 +1,5 @@
 // File: server/controllers/productController.js
+
 import Product from "../models/Product.js";
 import Partner from "../models/Partner.js";
 
@@ -18,7 +19,7 @@ export const createProduct = async (req, res) => {
       rating: Number(req.body.rating),
       review: req.body.review,
       images: imageFilenames,
-      subServices: parsedSubServices
+      subServices: parsedSubServices,
     });
 
     console.log("📥 Received subServices:", parsedSubServices);
@@ -38,7 +39,6 @@ export const getAllProducts = async (req, res) => {
 
     const productsWithAvailability = await Promise.all(
       products.map(async (product) => {
-        // Matching by name (or add a product.category field if you prefer)
         const hasPartner = await Partner.exists({
           category: product.name,
           isApproved: true,
@@ -53,9 +53,11 @@ export const getAllProducts = async (req, res) => {
 
     res.status(200).json(productsWithAvailability);
   } catch (err) {
+    console.error("❌ Error fetching products:", err.message);
     res.status(500).json({ message: "Failed to fetch products" });
   }
 };
+
 // ✅ Get Product by ID
 export const getProductById = async (req, res) => {
   try {
@@ -63,11 +65,12 @@ export const getProductById = async (req, res) => {
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.json(product);
   } catch (err) {
+    console.error("❌ Error fetching product by ID:", err.message);
     res.status(500).json({ message: "Error fetching product" });
   }
 };
 
-// ✅ Update Product
+// ✅ Update Product (with existing image retention & subservices management)
 export const updateProduct = async (req, res) => {
   try {
     const imageFilenames = req.files ? req.files.map(file => file.filename) : [];
@@ -76,21 +79,22 @@ export const updateProduct = async (req, res) => {
       ? JSON.parse(req.body.subServices)
       : [];
 
+    const keptImages = req.body.existingImages
+      ? JSON.parse(req.body.existingImages)
+      : [];
+
     const updatedData = {
       name: req.body.name,
       description: req.body.description,
       price: Number(req.body.price),
       rating: Number(req.body.rating),
       review: req.body.review,
-      subServices: parsedSubServices
+      subServices: parsedSubServices,
+      images: [...keptImages, ...imageFilenames],
     };
 
-    if (imageFilenames.length > 0) {
-      updatedData.images = imageFilenames;
-    }
-
     const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updatedData, {
-      new: true
+      new: true,
     });
 
     if (!updatedProduct) {
@@ -110,6 +114,7 @@ export const deleteProduct = async (req, res) => {
     await Product.findByIdAndDelete(req.params.id);
     res.json({ message: "Product deleted" });
   } catch (err) {
+    console.error("❌ Error deleting product:", err.message);
     res.status(500).json({ message: "Error deleting product" });
   }
 };
@@ -120,6 +125,7 @@ export const getPopularServices = async (req, res) => {
     const popular = await Product.find().sort({ createdAt: -1 }).limit(6);
     res.status(200).json(popular);
   } catch (err) {
+    console.error("❌ Error loading popular services:", err.message);
     res.status(500).json({ message: "Failed to load popular services" });
   }
 };

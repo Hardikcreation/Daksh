@@ -11,6 +11,7 @@ import {
 
 const router = express.Router();
 
+// 🗂️ Multer storage setup for images
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
@@ -18,11 +19,12 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.post("/", upload.array("images"), createProduct);
-router.get("/", getAllProducts);
-router.get("/:id", getProductById);
-router.put("/:id", updateProduct);
-router.delete("/:id", deleteProduct);
-router.get("/popular", getPopularServices);
+// 🛠️ Routes
+router.post("/", upload.array("images"), createProduct); // Create with image upload
+router.get("/", getAllProducts);                         // Get all
+router.get("/popular", getPopularServices);              // Popular/latest
+router.get("/:id", getProductById);                      // Get by ID
+router.put("/:id", upload.array("images"), updateProduct); // ✅ Update with image upload
+router.delete("/:id", deleteProduct);                    // Delete
 
 export default router;
