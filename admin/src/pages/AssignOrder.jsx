@@ -260,81 +260,70 @@ export default function AssignOrder() {
 </div>
 
       {/* Orders & Providers Status List Section */}
-      <div className="bg-white rounded-xl shadow-lg p-8 max-w-5xl mx-auto mt-8 mb-20">
-        <h2 className="text-2xl font-bold text-indigo-600 mb-7 text-center">Orders & Providers Status</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-y-2">
-            <thead>
-              <tr>
-                <th className="bg-indigo-400 text-white font-semibold py-2 px-2 rounded-tl-lg">Order ID &<br/>Date/Time</th>
-                <th className="bg-indigo-400 text-white font-semibold py-2 px-2">Service</th>
-                <th className="bg-indigo-400 text-white font-semibold py-2 px-2">Accepted Provider</th>
-                <th className="bg-indigo-400 text-white font-semibold py-2 px-2">Rejected Providers</th>
-                <th className="bg-indigo-400 text-white font-semibold py-2 px-2 rounded-tr-lg">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {showStatusOrders.map(order => (
-                <tr key={order._id}>
-                  <td className="bg-gray-50 py-2 px-2 rounded-l-lg text-center">
-                    {order._id}
-                    <br />
-                    <span className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString()}</span>
-                  </td>
-                  <td className="bg-gray-50 py-2 px-2 text-center">{order.items?.[0]?.title}</td>
-                  <td className="bg-gray-50 py-2 px-2 text-center">
-                    {order.assignedPartner
-                      ? <span className="text-green-600 font-semibold">
-                          {order.assignedPartner.name} ({order.assignedPartner.email})
-                        </span>
-                      : <span className="text-gray-400">None</span>}
-                  </td>
-                  <td className="bg-gray-50 py-2 px-2 text-center">
-                    {(order.rejectedPartners && order.rejectedPartners.length > 0)
-                      ? order.rejectedPartners.map((p, idx) => (
-                          <span
-                            key={p._id || p.email || idx}
-                            className="inline-block m-1 px-2 py-1 rounded bg-red-100 text-red-700 text-sm"
-                          >
-                            {p.name ? p.name : "Unknown"}{p.email ? ` (${p.email})` : ""}
-                          </span>
-                        ))
-                      : <span className="text-gray-400">None</span>}
-                  </td>
-                  <td className="bg-gray-50 py-2 px-2 rounded-r-lg text-center">
-                    <span className={`px-3 py-1 rounded-lg font-semibold
-                      ${order.requestStatus === "Pending"
-                        ? "bg-red-100 text-red-600"
-                        : order.requestStatus === "Completed"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
-                      }`}>
-                      {order.requestStatus}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {!showStatusOrders.length && (
-                <tr>
-                  <td className="bg-gray-50 py-2 px-2 text-center" colSpan={5}>
-                    <span className="text-gray-500">No orders found.</span>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          {orders.length > 5 &&
-            <div className="flex justify-center mt-3">
-              <button
-                className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded shadow hover:bg-indigo-200 transition"
-                onClick={() => setShowAllStatus(s => !s)}
-              >
-                {showAllStatus ? "Show Less" : "Show More"}
-              </button>
-            </div>
-          }
-        </div>
+     <div className="bg-white rounded-xl shadow-lg p-8 max-w-5xl mx-auto mt-8 mb-20">
+  <h2 className="text-2xl font-bold text-indigo-600 mb-7 text-center">Orders & Providers Status</h2>
+  <div className="overflow-x-auto">
+    <table className="min-w-full border-separate border-spacing-y-2">
+      <thead>
+        <tr>
+          <th className="bg-indigo-400 text-white font-semibold py-2 px-2 rounded-tl-lg">Order ID &<br/>Date/Time</th>
+          <th className="bg-indigo-400 text-white font-semibold py-2 px-2">Service</th>
+          <th className="bg-indigo-400 text-white font-semibold py-2 px-2">Accepted Provider</th>
+          {/* Removed Rejected Providers column */}
+          <th className="bg-indigo-400 text-white font-semibold py-2 px-2 rounded-tr-lg">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {showStatusOrders.map(order => (
+          <tr key={order._id}>
+            <td className="bg-gray-50 py-2 px-2 rounded-l-lg text-center">
+              {order._id}
+              <br />
+              <span className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString()}</span>
+            </td>
+            <td className="bg-gray-50 py-2 px-2 text-center">{order.items?.[0]?.title}</td>
+            <td className="bg-gray-50 py-2 px-2 text-center">
+              {order.assignedPartner
+                ? <span className="text-green-600 font-semibold">
+                    {order.assignedPartner.name} ({order.assignedPartner.email})
+                  </span>
+                : <span className="text-gray-400">None</span>}
+            </td>
+            {/* Removed Rejected Providers cell */}
+            <td className="bg-gray-50 py-2 px-2 rounded-r-lg text-center">
+              <span className={`px-3 py-1 rounded-lg font-semibold
+                ${order.requestStatus === "Pending"
+                  ? "bg-red-100 text-red-600"
+                  : order.requestStatus === "Completed"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-yellow-100 text-yellow-700"
+                }`}>
+                {order.requestStatus}
+              </span>
+            </td>
+          </tr>
+        ))}
+        {!showStatusOrders.length && (
+          <tr>
+            <td className="bg-gray-50 py-2 px-2 text-center" colSpan={4}>
+              <span className="text-gray-500">No orders found.</span>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+    {orders.length > 5 &&
+      <div className="flex justify-center mt-3">
+        <button
+          className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded shadow hover:bg-indigo-200 transition"
+          onClick={() => setShowAllStatus(s => !s)}
+        >
+          {showAllStatus ? "Show Less" : "Show More"}
+        </button>
       </div>
+    }
+  </div>
+</div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { AuthContext } from "../context/AuthContext";
 import { FiLogOut, FiHelpCircle, FiUser } from "react-icons/fi";
 import { useNavigate } from "react-router-dom"; // <-- Add this import
 
-const BASE_URL = "http://localhost:8080";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function CustomerProfile() {
   const { isAuthenticated, logout } = useContext(AuthContext);
