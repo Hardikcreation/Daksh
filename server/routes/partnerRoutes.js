@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import {
   registerPartner,
   verifyOTP,
@@ -17,38 +18,36 @@ import {
   updateDocumentStatus,
   checkDocumentsStatus,
 } from "../controllers/partnerDocs.js";
+
 import { adminProtect } from "../middleware/adminAuthMiddleware.js";
-import partnerAuth from "../middleware/partnerAuth.js";
 import { protectPartner, authPartner } from "../middleware/authPartner.js";
-import multer from "multer";
+import partnerAuth from "../middleware/partnerAuth.js"; // You can consolidate this if needed
 
 const router = express.Router();
 
-// Multer setup
+// ✅ Multer file upload config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
 });
 const upload = multer({ storage });
 
-// Authenticated partner details
-router.get("/me", protectPartner, getMe);
-
-// Registration & Auth
+// ✅ Auth & Registration
 router.post("/register", registerPartner);
 router.post("/verify", verifyOTP);
 router.post("/login", loginPartner);
 router.post("/forget-password-partner", forgotPassword);
 router.put("/reset-password-partner/:token", resetPassword);
 
-// Partner management
-router.get("/", getAllPartners); // List all
-router.delete("/:id", deletePartner);
-
-// Partner dashboard stats
+// ✅ Partner Authenticated Routes
+router.get("/me", protectPartner, getMe);
 router.get("/dashboard-stats", protectPartner, getPartnerDashboardStats);
+router.post("/support", protectPartner, handlePartnerSupport);
 
-// Documents
+// ✅ Update personal details (authenticated)
+router.post("/update-personal-details", authPartner, updatePersonalDetails);
+
+// ✅ Document Handling
 router.get("/check-documents", partnerAuth, checkDocumentsStatus);
 router.post(
   "/upload-documents",
@@ -66,15 +65,11 @@ router.post(
 );
 router.put("/verify-documents/:partnerId", adminProtect, updateDocumentStatus);
 
-// Support
-router.post("/support", protectPartner, handlePartnerSupport);
+// ✅ Admin Panel Routes
+router.get("/", getAllPartners); // Consider protecting this with adminProtect
+router.delete("/:id", deletePartner); // Same here
 
-// Personal details update
-router.post("/update-personal-details", authPartner, updatePersonalDetails);
-
-// --------- FIX: Middleware to set req.partner from req.user if missing ---------
-// This should be placed before any routes that expect req.partner to exist.
-// For example, you can place it here, or directly in updatePersonalDetails controller if only used there.
+// ✅ Optional: Middleware to sync req.user -> req.partner if needed
 router.use((req, res, next) => {
   if (!req.partner && req.user) {
     req.partner = req.user;

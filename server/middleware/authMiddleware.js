@@ -1,64 +1,55 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Partner from "../models/Partner.js";
-import { config } from "../config/keys.js";
-import { log } from 'console';
+import { config } from "../config/keys.js"; // ensure config.jwtSecret is set correctly
 
+// 🔒 Middleware to protect user routes
 export const protect = async (req, res, next) => {
-  let token;
+  const authHeader = req.headers.authorization;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
+  if (authHeader && authHeader.startsWith("Bearer ")) {
     try {
-      token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(token, config.jwtSecret );
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, config.jwtSecret);
       req.user = await User.findById(decoded.userId).select("-password");
-      req.userId = decoded.userId || decoded.id; // ✅ Fixed here
-      next();
-    } catch (error) {
-      if (error.name === "TokenExpiredError") {
-        return res.status(401).json({ message: "Token expired" });
-      } else {
-        return res.status(401).json({ message: "Invalid token" });
-      }
+      req.userId = decoded.userId || decoded.id; // used in cartController
+      return next();
+    } catch (err) {
+      const msg = err.name === "TokenExpiredError" ? "Token expired" : "Invalid token";
+      return res.status(401).json({ message: msg });
     }
-  } else {
-    return res.status(401).json({ message: "No token, not authorized" });
   }
+
+  return res.status(401).json({ message: "No token, not authorized" });
 };
 
+// 🔒 Middleware to protect partner routes
 export const authMiddleware = async (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'Unauthorized' });
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await Partner.findById(decoded.id).select('-password');
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Token is not valid' });
+    req.user = await Partner.findById(decoded.id).select("-password");
+    return next();
+  } catch (err) {
+    return res.status(401).json({ message: "Token is not valid" });
   }
 };
 
-// verify partner 
+// 🔒 Middleware to verify partner during restricted access
 export const verifyPartnerAuth = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "No token provided" });
-    }
-
     const token = authHeader.split(" ")[1];
-    console.log(token)
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // ✅ use correct secret
-    console.log("Decoded:", decoded);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const partner = await Partner.findById(decoded.id);
-    if (!partner) {
-      return res.status(401).json({ message: "Invalid token: partner not found" });
-    }
+    if (!partner) return res.status(401).json({ message: "Invalid token: partner not found" });
 
     req.partner = partner;
     next();
