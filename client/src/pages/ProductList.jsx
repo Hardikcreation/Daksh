@@ -109,8 +109,9 @@ export default function ProductList() {
           {products.map((product) => {
             const isAvailable = product.partnerAvailable !== false;
             return (
-              <div
+              <Link
                 key={product._id}
+                to={`/product/${product._id}`}
                 className={`
                   bg-white 
                   rounded-2xl sm:rounded-2xl
@@ -122,8 +123,14 @@ export default function ProductList() {
                   border-0 sm:border border-gray-100
                   relative
                   transform hover:scale-[1.02] sm:hover:scale-100
+                  cursor-pointer
                   ${!isAvailable ? "opacity-60 pointer-events-none" : ""}
                 `}
+                tabIndex={isAvailable ? 0 : -1}
+                aria-disabled={!isAvailable}
+                onClick={e => {
+                  if (!isAvailable) e.preventDefault();
+                }}
               >
                 {/* Overlay if not available */}
                 {!isAvailable && (
@@ -133,14 +140,6 @@ export default function ProductList() {
                         Not Available
                       </span>
                     </div>
-                  </div>
-                )}
-
-                {/* Mobile rating badge - positioned better */}
-                {product.rating && (
-                  <div className="absolute top-3 right-3 sm:top-2 sm:right-2 bg-black/70 sm:bg-white/90 px-3 py-1.5 sm:px-2 sm:py-1 rounded-full text-xs font-semibold flex items-center shadow-lg sm:shadow-sm z-10">
-                    <span className="text-yellow-400 sm:text-gray-800 mr-1">⭐</span>
-                    <span className="text-white sm:text-gray-800">{Number(product.rating).toFixed(1)}</span>
                   </div>
                 )}
 
@@ -176,16 +175,18 @@ export default function ProductList() {
                     </h2>
                     <div className="flex flex-col items-end">
                       <p className="text-xl sm:text-lg font-bold text-green-600 whitespace-nowrap">
-                        ₹{product.price}
+                        ₹{product.visitingPrice}
                       </p>
-                      <span className="text-xs text-gray-500 sm:hidden">starting from</span>
+                      <span className="text-xs text-gray-500 sm:hidden">visiting price</span>
                     </div>
                   </div>
 
-                  {/* Description */}
-                  <p className="text-sm sm:text-base text-gray-600 line-clamp-2 mb-4 sm:mb-2 leading-relaxed">
-                    {product.description}
-                  </p>
+                  {/* Sub-services count */}
+                  {product.subServices && product.subServices.length > 0 && (
+                    <div className="text-sm text-blue-600 mb-4">
+                      {product.subServices.length} sub-services available
+                    </div>
+                  )}
 
                   {/* Mobile-specific features */}
                   <div className="sm:hidden mb-4">
@@ -208,46 +209,23 @@ export default function ProductList() {
                   <div className="flex-grow"></div>
                   
                   {/* CTA Button */}
-                  <Link
-                    to={isAvailable ? `/product/${product._id}` : "#"}
-                    tabIndex={isAvailable ? 0 : -1}
-                    className={`
-                      mt-3 sm:mt-6 
-                      inline-block 
-                      w-full 
-                      text-center 
-                      ${isAvailable 
-                        ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 sm:bg-indigo-600 sm:hover:bg-indigo-700 active:scale-95 sm:active:scale-100" 
-                        : "bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
-                      } 
-                      text-white 
-                      px-4 py-3 sm:px-6 sm:py-3 
-                      rounded-xl sm:rounded-lg
-                      font-semibold sm:font-medium
-                      transition-all duration-200
-                      text-base sm:text-base
-                      shadow-lg sm:shadow-sm
-                      flex items-center justify-center
-                    `}
-                    aria-disabled={!isAvailable}
-                    onClick={e => {
-                      if (!isAvailable) e.preventDefault();
-                    }}
-                  >
-                    {isAvailable ? (
-                      <>
-                        <span className="sm:hidden">Book Now</span>
-                        <span className="hidden sm:inline">View Details</span>
-                        <svg className="w-5 h-5 ml-2 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                      </>
-                    ) : (
-                      "Not Available"
-                    )}
-                  </Link>
+                  <div className="mt-3 sm:mt-6">
+                    <span
+                      className={`
+                        w-full 
+                        text-center 
+                        bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 sm:px-6 sm:py-3 rounded-xl sm:rounded-lg font-semibold sm:font-medium transition-all duration-200 text-base sm:text-base shadow-lg sm:shadow-sm flex items-center justify-center
+                      `}
+                    >
+                      <span className="sm:hidden">View Details</span>
+                      <span className="hidden sm:inline">View Details</span>
+                      <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

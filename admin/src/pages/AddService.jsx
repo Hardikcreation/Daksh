@@ -6,14 +6,18 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 export default function AddService() {
   const [form, setForm] = useState({
     name: "",
-    description: "",
-    price: "",
-    rating: "",
-    review: "",
+    visitingPrice: "",
     images: [],
   });
 
-  const [subServices, setSubServices] = useState([{ title: "", price: "" }]);
+  const [subServices, setSubServices] = useState([
+    { 
+      name: "", 
+      price: "", 
+      image: null,
+      imagePreview: null 
+    }
+  ]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,7 +25,12 @@ export default function AddService() {
   };
 
   const handleImageChange = (e) => {
-    setForm((prev) => ({ ...prev, images: Array.from(e.target.files) }));
+    const files = Array.from(e.target.files);
+    if (files.length > 5) {
+      alert("Maximum 5 images allowed");
+      return;
+    }
+    setForm((prev) => ({ ...prev, images: files }));
   };
 
   const handleSubChange = (index, e) => {
@@ -31,8 +40,30 @@ export default function AddService() {
     setSubServices(updated);
   };
 
+  const handleSubImageChange = (index, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const updated = [...subServices];
+      updated[index].image = file;
+      updated[index].imagePreview = URL.createObjectURL(file);
+      setSubServices(updated);
+    }
+  };
+
+  const removeSubServiceImage = (index) => {
+    const updated = [...subServices];
+    updated[index].image = null;
+    updated[index].imagePreview = null;
+    setSubServices(updated);
+  };
+
   const addSubService = () => {
-    setSubServices([...subServices, { title: "", price: "" }]);
+    setSubServices([...subServices, { 
+      name: "", 
+      price: "", 
+      image: null,
+      imagePreview: null 
+    }]);
   };
 
   const removeSubService = (index) => {
@@ -45,39 +76,64 @@ export default function AddService() {
     e.preventDefault();
 
     const formData = new FormData();
-    Object.entries(form).forEach(([key, value]) => {
-      if (key === "images") {
-        value.forEach((file) => formData.append("images", file));
-      } else {
-        formData.append(key, value);
+    formData.append("name", form.name);
+    formData.append("visitingPrice", form.visitingPrice);
+    
+    // Add main service images
+    form.images.forEach((file) => {
+      formData.append("images", file);
+    });
+
+    // Add subservices with their images
+    const subServicesData = subServices.map(sub => ({
+      name: sub.name,
+      price: sub.price,
+      image: sub.image ? sub.image.name : null
+    }));
+    formData.append("subServices", JSON.stringify(subServicesData));
+
+    // Add subservice images
+    subServices.forEach((sub, index) => {
+      if (sub.image) {
+        formData.append(`subServiceImages`, sub.image);
       }
     });
 
-    formData.append("subServices", JSON.stringify(subServices));
-
     try {
-      await axios.post(`${BASE_URL}/api/products`, formData, {
+      console.log("📤 Sending form data:", {
+        name: form.name,
+        visitingPrice: form.visitingPrice,
+        imagesCount: form.images.length,
+        subServicesCount: subServices.length
+      });
+      
+      const response = await axios.post(`${BASE_URL}/api/products`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      
+      console.log("✅ Response:", response.data);
       alert("✅ Service added successfully!");
       setForm({
         name: "",
-        description: "",
-        price: "",
-        rating: "",
-        review: "",
+        visitingPrice: "",
         images: [],
       });
-      setSubServices([{ title: "", price: "" }]);
+      setSubServices([{ 
+        name: "", 
+        price: "", 
+        image: null,
+        imagePreview: null 
+      }]);
     } catch (err) {
       console.error("❌ Failed to add service:", err);
-      alert("❌ Failed to add service. Please try again.");
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "Unknown error occurred";
+      alert(`❌ Failed to add service: ${errorMessage}`);
     }
   };
 
   return (
     <div className="lg:ml-64 min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="text-center mb-6 md:mb-10">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
             Add New Service
@@ -90,67 +146,149 @@ export default function AddService() {
         <div className="bg-white shadow-md sm:shadow-xl rounded-lg sm:rounded-2xl overflow-hidden">
           <div className="p-4 sm:p-6 md:p-8 lg:p-10">
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-
-              {/* All Original Fields */}
+              {/* Main Service Details */}
               <div className="space-y-4 sm:space-y-6">
                 <div>
-                  <label htmlFor="name" className="block text-base font-medium text-gray-700 mb-1">Service Name</label>
-                  <input id="name" name="name" value={form.name} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
+                  <label htmlFor="name" className="block text-base font-medium text-gray-700 mb-1">
+                    Service Name
+                  </label>
+                  <input 
+                    id="name" 
+                    name="name" 
+                    value={form.name} 
+                    onChange={handleChange} 
+                    required 
+                    className="w-full border rounded px-3 py-2" 
+                  />
                 </div>
+                
                 <div>
-                  <label htmlFor="description" className="block text-base font-medium text-gray-700 mb-1">Description</label>
-                  <textarea id="description" name="description" rows={4} value={form.description} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
+                  <label htmlFor="visitingPrice" className="block text-base font-medium text-gray-700 mb-1">
+                    Visiting Price (₹)
+                  </label>
+                  <input 
+                    id="visitingPrice" 
+                    name="visitingPrice" 
+                    type="number" 
+                    value={form.visitingPrice} 
+                    onChange={handleChange} 
+                    required 
+                    className="w-full border rounded px-3 py-2" 
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="price" className="block text-base font-medium text-gray-700 mb-1">Price (₹)</label>
-                    <input id="price" name="price" type="number" value={form.price} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
-                  </div>
-                  <div>
-                    <label htmlFor="rating" className="block text-base font-medium text-gray-700 mb-1">Rating (/5)</label>
-                    <input id="rating" name="rating" type="number" step="0.1" min="1" max="5" value={form.rating} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
-                  </div>
-                </div>
+                
                 <div>
-                  <label htmlFor="review" className="block text-base font-medium text-gray-700 mb-1">Review (Optional)</label>
-                  <input id="review" name="review" value={form.review} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label htmlFor="images" className="block text-base font-medium text-gray-700 mb-1">Service Images</label>
-                  <input id="images" name="images" type="file" multiple onChange={handleImageChange} required className="w-full border rounded px-3 py-2" />
+                  <label htmlFor="images" className="block text-base font-medium text-gray-700 mb-1">
+                    Service Images (Max 5)
+                  </label>
+                  <input 
+                    id="images" 
+                    name="images" 
+                    type="file" 
+                    multiple 
+                    accept="image/*"
+                    onChange={handleImageChange} 
+                    required 
+                    className="w-full border rounded px-3 py-2" 
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Selected: {form.images.length} images
+                  </p>
                 </div>
               </div>
 
               {/* Sub-Services */}
-              <div className="space-y-3">
-                <label className="block text-base font-medium text-gray-700">Sub-Services</label>
-                {subServices.map((sub, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <input
-                      name="title"
-                      value={sub.title}
-                      placeholder="Title"
-                      onChange={(e) => handleSubChange(index, e)}
-                      required
-                      className="flex-1 border rounded px-3 py-1"
-                    />
-                    <input
-                      name="price"
-                      value={sub.price}
-                      type="number"
-                      placeholder="Price"
-                      onChange={(e) => handleSubChange(index, e)}
-                      required
-                      className="w-32 border rounded px-3 py-1"
-                    />
-                    {subServices.length > 1 && (
-                      <button type="button" onClick={() => removeSubService(index)} className="text-red-600 text-xl">×</button>
-                    )}
-                  </div>
-                ))}
-                <button type="button" onClick={addSubService} className="text-blue-600 hover:underline text-sm mt-1">
-                  + Add Another Sub-Service
-                </button>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-base font-medium text-gray-700">
+                    Sub-Services
+                  </label>
+                  <button 
+                    type="button" 
+                    onClick={addSubService} 
+                    className="text-blue-600 hover:underline text-sm"
+                  >
+                    + Add Sub-Service
+                  </button>
+                </div>
+                
+                <div className="grid gap-4">
+                  {subServices.map((sub, index) => (
+                    <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-gray-700">Sub-Service {index + 1}</h4>
+                        {subServices.length > 1 && (
+                          <button 
+                            type="button" 
+                            onClick={() => removeSubService(index)} 
+                            className="text-red-600 hover:text-red-800 text-xl"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Sub-Service Name
+                          </label>
+                          <input
+                            name="name"
+                            value={sub.name}
+                            placeholder="Enter sub-service name"
+                            onChange={(e) => handleSubChange(index, e)}
+                            required
+                            className="w-full border rounded px-3 py-2"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Price (₹)
+                          </label>
+                          <input
+                            name="price"
+                            value={sub.price}
+                            type="number"
+                            placeholder="Enter price"
+                            onChange={(e) => handleSubChange(index, e)}
+                            required
+                            className="w-full border rounded px-3 py-2"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Sub-Service Image
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleSubImageChange(index, e)}
+                          className="w-full border rounded px-3 py-2"
+                        />
+                        {sub.imagePreview && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <img 
+                              src={sub.imagePreview} 
+                              alt="Preview" 
+                              className="w-20 h-20 object-cover rounded border"
+                            />
+                            <button 
+                              type="button" 
+                              onClick={() => removeSubServiceImage(index)}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Submit Button */}
@@ -162,7 +300,6 @@ export default function AddService() {
                   Publish Service
                 </button>
               </div>
-
             </form>
           </div>
         </div>

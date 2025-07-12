@@ -6,29 +6,60 @@ import Partner from "../models/Partner.js";
 // ✅ Create Product
 export const createProduct = async (req, res) => {
   try {
-    const imageFilenames = req.files ? req.files.map(file => file.filename) : [];
+    console.log("📥 Request body:", req.body);
+    console.log("📥 Request files:", req.files);
+    console.log("📥 Request headers:", req.headers);
+    
+    // Validate required fields
+    if (!req.body.name) {
+      console.log("❌ Missing name field");
+      return res.status(400).json({ message: "Service name is required" });
+    }
+    
+    if (!req.body.visitingPrice) {
+      console.log("❌ Missing visitingPrice field");
+      return res.status(400).json({ message: "Visiting price is required" });
+    }
+    
+    // Handle main service images
+    const mainImages = req.files && req.files.images ? req.files.images.map(file => file.filename) : [];
+    console.log("📥 Main images:", mainImages);
+    
+    // Handle subservice images
+    const subServiceImages = req.files && req.files.subServiceImages ? req.files.subServiceImages : [];
+    console.log("📥 Subservice images:", subServiceImages);
 
     const parsedSubServices = req.body.subServices
       ? JSON.parse(req.body.subServices)
       : [];
+    console.log("📥 Parsed subservices:", parsedSubServices);
+
+    // Map subservice images to their corresponding subservices
+    const updatedSubServices = parsedSubServices.map((subService, index) => {
+      const subServiceImage = subServiceImages[index];
+      return {
+        ...subService,
+        image: subServiceImage ? subServiceImage.filename : null
+      };
+    });
+    console.log("📥 Updated subservices:", updatedSubServices);
 
     const newProduct = new Product({
       name: req.body.name,
-      description: req.body.description,
-      price: Number(req.body.price),
-      rating: Number(req.body.rating),
-      review: req.body.review,
-      images: imageFilenames,
-      subServices: parsedSubServices,
+      visitingPrice: Number(req.body.visitingPrice),
+      images: mainImages,
+      subServices: updatedSubServices,
     });
 
-    console.log("📥 Received subServices:", parsedSubServices);
+    console.log("📥 Created product object:", newProduct);
 
     await newProduct.save();
+    console.log("✅ Product saved successfully");
     res.status(201).json({ message: "Product created", product: newProduct });
   } catch (err) {
     console.error("❌ Error in createProduct:", err.message);
-    res.status(500).json({ message: "Failed to create product" });
+    console.error("❌ Full error:", err);
+    res.status(500).json({ message: "Failed to create product", error: err.message });
   }
 };
 
@@ -73,11 +104,31 @@ export const getProductById = async (req, res) => {
 // ✅ Update Product (with existing image retention & subservices management)
 export const updateProduct = async (req, res) => {
   try {
-    const imageFilenames = req.files ? req.files.map(file => file.filename) : [];
+    console.log("📥 Update Request body:", req.body);
+    console.log("📥 Update Request files:", req.files);
+    
+    // Handle main service images
+    const mainImages = req.files && req.files.images ? req.files.images.map(file => file.filename) : [];
+    console.log("📥 Main images:", mainImages);
+    
+    // Handle subservice images
+    const subServiceImages = req.files && req.files.subServiceImages ? req.files.subServiceImages : [];
+    console.log("📥 Subservice images:", subServiceImages);
 
     const parsedSubServices = req.body.subServices
       ? JSON.parse(req.body.subServices)
       : [];
+    console.log("📥 Parsed subservices:", parsedSubServices);
+
+    // Map subservice images to their corresponding subservices
+    const updatedSubServices = parsedSubServices.map((subService, index) => {
+      const subServiceImage = subServiceImages[index];
+      return {
+        ...subService,
+        image: subServiceImage ? subServiceImage.filename : subService.image // Keep existing if no new image
+      };
+    });
+    console.log("📥 Updated subservices:", updatedSubServices);
 
     const keptImages = req.body.existingImages
       ? JSON.parse(req.body.existingImages)
@@ -85,13 +136,12 @@ export const updateProduct = async (req, res) => {
 
     const updatedData = {
       name: req.body.name,
-      description: req.body.description,
-      price: Number(req.body.price),
-      rating: Number(req.body.rating),
-      review: req.body.review,
-      subServices: parsedSubServices,
-      images: [...keptImages, ...imageFilenames],
+      visitingPrice: Number(req.body.visitingPrice),
+      subServices: updatedSubServices,
+      images: [...keptImages, ...mainImages],
     };
+
+    console.log("📥 Updated data:", updatedData);
 
     const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updatedData, {
       new: true,
@@ -104,7 +154,8 @@ export const updateProduct = async (req, res) => {
     res.json({ message: "Product updated", product: updatedProduct });
   } catch (err) {
     console.error("❌ Error updating product:", err.message);
-    res.status(500).json({ message: "Error updating product" });
+    console.error("❌ Full error:", err);
+    res.status(500).json({ message: "Error updating product", error: err.message });
   }
 };
 
