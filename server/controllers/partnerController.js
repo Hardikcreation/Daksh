@@ -26,14 +26,38 @@ const sendEmail = async (email, otp) => {
 export const registerPartner = async (req, res) => {
   const { name, email, phone, password, category } = req.body;
 
-  // Defensive: check required fields
+  // Enhanced validation
   if (!name || !email || !phone || !password || !category) {
-    return res.status(400).json({ message: 'All fields are required (name, email, phone, password, category).' });
+    return res.status(400).json({ 
+      message: 'All fields are required (name, email, phone, password, category).' 
+    });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: 'Please provide a valid email address.' });
+  }
+
+  // Validate phone format (basic)
+  if (phone.length < 10) {
+    return res.status(400).json({ message: 'Please provide a valid phone number.' });
   }
 
   try {
-    const existingPartner = await Partner.findOne({ $or: [{ email }, { phone }] });
-    if (existingPartner) return res.status(400).json({ message: 'Email or Phone already registered' });
+    // Check for existing partner with same email or phone
+    const existingPartner = await Partner.findOne({ 
+      $or: [
+        { email: email.trim().toLowerCase() }, 
+        { phone: phone.trim() }
+      ] 
+    });
+    
+    if (existingPartner) {
+      return res.status(400).json({ 
+        message: 'Email or Phone already registered' 
+      });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const otp = generateOTP();
@@ -41,28 +65,44 @@ export const registerPartner = async (req, res) => {
     const jobId = crypto.randomBytes(4).toString('hex');
 
     const partner = new Partner({
-      name,
-      email,
-      phone,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
       password: hashedPassword,
       otp,
       otpExpires,
       jobId,
       category,
-      isVerified: false, // typically false until email/otp is verified
-      // personalDetails and documents will be added in later steps
+      isVerified: false,
     });
 
     await partner.save();
     await sendEmail(email, otp);
     res.status(201).json({ message: 'OTP sent to your email' });
   } catch (error) {
+    console.error('Partner registration error:', error);
+    
     // Handle duplicate key error (E11000)
     if (error.code === 11000) {
       const dupField = Object.keys(error.keyValue)[0];
-      return res.status(400).json({ message: `Duplicate value for: ${dupField}` });
+      return res.status(400).json({ 
+        message: `Duplicate value for: ${dupField}` 
+      });
     }
-    res.status(500).json({ message: 'Registration failed', error: error.message });
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Registration failed', 
+      error: error.message 
+    });
   }
 };
 

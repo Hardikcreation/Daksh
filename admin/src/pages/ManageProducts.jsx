@@ -7,17 +7,20 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 function EditProductModal({ product, onClose, onSave }) {
   const [form, setForm] = useState({
     name: product.name,
-    description: product.description,
-    price: product.price,
-    rating: product.rating,
-    review: product.review || "",
+    visitingPrice: product.visitingPrice,
     images: [], // new files to upload
   });
   const [existingImages, setExistingImages] = useState(Array.isArray(product.images) ? [...product.images] : []);
   const [subServices, setSubServices] = useState(
     Array.isArray(product.subServices) && product.subServices.length > 0
-      ? [...product.subServices]
-      : [{ title: "", price: "" }]
+      ? product.subServices.map(sub => ({
+          name: sub.name,
+          price: sub.price,
+          existingImage: sub.image, // Keep existing image
+          image: null, // New image file
+          imagePreview: null // Preview for new image
+        }))
+      : [{ name: "", price: "", existingImage: null, image: null, imagePreview: null }]
   );
 
   // Handle text/number input change
@@ -28,9 +31,14 @@ function EditProductModal({ product, onClose, onSave }) {
 
   // Handle new image uploads
   const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 5) {
+      alert("Maximum 5 images allowed");
+      return;
+    }
     setForm((prev) => ({
       ...prev,
-      images: Array.from(e.target.files),
+      images: files,
     }));
   };
 
@@ -55,9 +63,33 @@ function EditProductModal({ product, onClose, onSave }) {
     setSubServices(updated);
   };
 
+  // Handle subservice image change
+  const handleSubImageChange = (index, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const updated = [...subServices];
+      updated[index].image = file;
+      updated[index].imagePreview = URL.createObjectURL(file);
+      setSubServices(updated);
+    }
+  };
+
+  // Remove existing subservice image
+  const handleRemoveSubServiceImage = (index) => {
+    const updated = [...subServices];
+    updated[index].existingImage = null;
+    setSubServices(updated);
+  };
+
   // Add/remove subservices
   const addSubService = () => {
-    setSubServices([...subServices, { title: "", price: "" }]);
+    setSubServices([...subServices, { 
+      name: "", 
+      price: "", 
+      existingImage: null,
+      image: null, 
+      imagePreview: null 
+    }]);
   };
   const removeSubService = (index) => {
     if (subServices.length === 1) return;
@@ -72,64 +104,75 @@ function EditProductModal({ product, onClose, onSave }) {
 
     const formData = new FormData();
     // Add text fields
-    Object.entries(form).forEach(([key, value]) => {
-      if (key === "images") {
-        value.forEach((file) => formData.append("images", file));
-      } else {
-        formData.append(key, value);
-      }
+    formData.append("name", form.name);
+    formData.append("visitingPrice", form.visitingPrice);
+    
+    // Add main service images
+    form.images.forEach((file) => {
+      formData.append("images", file);
     });
+    
     // Always append existingImages (as JSON), even if empty
     formData.append("existingImages", JSON.stringify(existingImages || []));
-    // Subservices
-    formData.append("subServices", JSON.stringify(subServices || []));
+    
+    // Subservices with proper image handling
+    const subServicesData = subServices.map(sub => ({
+      name: sub.name,
+      price: sub.price,
+      image: sub.image ? sub.image.name : (sub.existingImage || null) // Use new image or keep existing
+    }));
+    formData.append("subServices", JSON.stringify(subServicesData || []));
+
+    // Add subservice images (only new ones)
+    subServices.forEach((sub, index) => {
+      if (sub.image && sub.image instanceof File) {
+        formData.append(`subServiceImages`, sub.image);
+      }
+    });
 
     try {
-      await axios.put(
+      console.log("📤 Sending update data:", {
+        name: form.name,
+        visitingPrice: form.visitingPrice,
+        imagesCount: form.images.length,
+        existingImagesCount: existingImages.length,
+        subServicesCount: subServices.length
+      });
+      
+      const response = await axios.put(
         `${BASE_URL}/api/products/${product._id}`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
         }
       );
+      
+      console.log("✅ Update response:", response.data);
       alert("✅ Product updated!");
       onSave(); // refresh parent
     } catch (err) {
-      alert("❌ Failed to update product.");
-      console.error(err);
+      console.error("❌ Failed to update product:", err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "Unknown error occurred";
+      alert(`❌ Failed to update product: ${errorMessage}`);
     }
   };
 
   // Modal UI
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg max-w-lg w-full p-6 overflow-y-auto max-h-[95vh] shadow-lg">
-        <h2 className="text-xl font-bold mb-3">Edit Product</h2>
+      <div className="bg-white rounded-lg max-w-2xl w-full p-6 overflow-y-auto max-h-[95vh] shadow-lg">
+        <h2 className="text-xl font-bold mb-3">Edit Service</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name, Description */}
+          {/* Name, Visiting Price */}
           <div>
-            <label className="block text-sm font-medium">Name</label>
+            <label className="block text-sm font-medium">Service Name</label>
             <input name="name" value={form.name} onChange={handleChange} required className="w-full border rounded px-2 py-1" />
           </div>
           <div>
-            <label className="block text-sm font-medium">Description</label>
-            <textarea name="description" value={form.description} onChange={handleChange} required className="w-full border rounded px-2 py-1" />
+            <label className="block text-sm font-medium">Visiting Price (₹)</label>
+            <input name="visitingPrice" type="number" value={form.visitingPrice} onChange={handleChange} required className="w-full border rounded px-2 py-1" />
           </div>
-          {/* Price, Rating, Review */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-sm font-medium">Price (₹)</label>
-              <input name="price" type="number" value={form.price} onChange={handleChange} required className="w-full border rounded px-2 py-1" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Rating</label>
-              <input name="rating" type="number" step="0.1" min="1" max="5" value={form.rating} onChange={handleChange} required className="w-full border rounded px-2 py-1" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Review (Optional)</label>
-            <input name="review" value={form.review} onChange={handleChange} className="w-full border rounded px-2 py-1" />
-          </div>
+          
           {/* Existing Images */}
           <div>
             <label className="block text-sm font-medium">Existing Images</label>
@@ -148,10 +191,11 @@ function EditProductModal({ product, onClose, onSave }) {
               {existingImages.length === 0 && <span className="text-xs text-gray-500">No images left</span>}
             </div>
           </div>
+          
           {/* Add New Images */}
           <div>
-            <label className="block text-sm font-medium">Add Images</label>
-            <input type="file" multiple onChange={handleImageChange} className="block" />
+            <label className="block text-sm font-medium">Add Images (Max 5)</label>
+            <input type="file" multiple accept="image/*" onChange={handleImageChange} className="block" />
             {/* Preview new images */}
             {form.images.length > 0 && (
               <div className="flex gap-2 flex-wrap mt-2">
@@ -168,33 +212,93 @@ function EditProductModal({ product, onClose, onSave }) {
 
           {/* Subservices */}
           <div>
-            <label className="block text-sm font-medium">Sub-Services</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium">Sub-Services</label>
+              <button type="button" onClick={addSubService} className="text-blue-600 hover:underline text-xs">+ Add Sub-Service</button>
+            </div>
             {subServices.map((sub, index) => (
-              <div key={index} className="flex gap-2 items-center my-1">
-                <input
-                  name="title"
-                  value={sub.title}
-                  placeholder="Title"
-                  onChange={(e) => handleSubChange(index, e)}
-                  required
-                  className="flex-1 border rounded px-2 py-1"
-                />
-                <input
-                  name="price"
-                  value={sub.price}
-                  type="number"
-                  placeholder="Price"
-                  onChange={(e) => handleSubChange(index, e)}
-                  required
-                  className="w-24 border rounded px-2 py-1"
-                />
-                {subServices.length > 1 && (
-                  <button type="button" onClick={() => removeSubService(index)} className="text-red-600 text-xl">×</button>
-                )}
+              <div key={index} className="border rounded-lg p-3 mb-3 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-sm">Sub-Service {index + 1}</h4>
+                  {subServices.length > 1 && (
+                    <button type="button" onClick={() => removeSubService(index)} className="text-red-600 text-xl">×</button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                  <input
+                    name="name"
+                    value={sub.name}
+                    placeholder="Sub-service Name"
+                    onChange={(e) => handleSubChange(index, e)}
+                    required
+                    className="border rounded px-2 py-1 text-sm"
+                  />
+                  <input
+                    name="price"
+                    value={sub.price}
+                    type="number"
+                    placeholder="Price"
+                    onChange={(e) => handleSubChange(index, e)}
+                    required
+                    className="border rounded px-2 py-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Sub-Service Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleSubImageChange(index, e)}
+                    className="block text-xs"
+                  />
+                  
+                  {/* Show existing image */}
+                  {sub.existingImage && !sub.imagePreview && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-gray-600">Current:</span>
+                      <img 
+                        src={`${BASE_URL}/uploads/${sub.existingImage}`} 
+                        alt="Current" 
+                        className="w-16 h-16 object-cover rounded border"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => handleRemoveSubServiceImage(index)} 
+                        className="text-red-600 text-xs hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Show new image preview */}
+                  {sub.imagePreview && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-gray-600">New:</span>
+                      <img 
+                        src={sub.imagePreview} 
+                        alt="Preview" 
+                        className="w-16 h-16 object-cover rounded border"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          const updated = [...subServices];
+                          updated[index].image = null;
+                          updated[index].imagePreview = null;
+                          setSubServices(updated);
+                        }} 
+                        className="text-red-600 text-xs hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
-            <button type="button" onClick={addSubService} className="text-blue-600 hover:underline text-xs mt-1">+ Add Another Sub-Service</button>
           </div>
+          
           {/* Buttons */}
           <div className="flex items-center gap-2 mt-3">
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Changes</button>
@@ -228,7 +332,7 @@ export default function ManageProducts() {
   }, []);
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
+    if (window.confirm("Are you sure you want to delete this service?")) {
       await axios.delete(`${BASE_URL}/api/products/${id}`);
       setProducts(products.filter(p => p._id !== id));
     }
@@ -246,16 +350,16 @@ export default function ManageProducts() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Manage Products</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Manage Services</h2>
           <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">
-            {products.length} {products.length === 1 ? 'product' : 'products'} available
+            {products.length} {products.length === 1 ? 'service' : 'services'} available
           </p>
         </div>
         <button
           onClick={() => navigate("/add-service")}
           className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
         >
-          Add New Product
+          Add New Service
         </button>
       </div>
 
@@ -279,14 +383,13 @@ export default function ManageProducts() {
                   alt={product.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
+                    e.target.src = 'https://via.placeholder.com/300x200?text=Service+Image';
                   }}
                 />
               </div>
               <div className="p-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-1 line-clamp-1">{product.name}</h3>
-                <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
-                <p className="text-sm text-gray-700"><strong>Rating:</strong> {product.rating} ★</p>
+                <p className="text-sm text-gray-700"><strong>Visiting Price:</strong> ₹{product.visitingPrice}</p>
                 {/* Subservices */}
                 {product.subServices && product.subServices.length > 0 && (
                   <div className="mt-3">
@@ -300,7 +403,7 @@ export default function ManageProducts() {
                       <ul className="list-disc list-inside mt-2 text-sm text-gray-800 space-y-1">
                         {product.subServices.map((sub, idx) => (
                           <li key={idx}>
-                            {sub.title} – ₹{sub.price}
+                            {sub.name} – ₹{sub.price}
                           </li>
                         ))}
                       </ul>
@@ -310,7 +413,9 @@ export default function ManageProducts() {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between mt-4 gap-2">
-                  <span className="text-xl font-bold text-green-600">₹{product.price}</span>
+                  <span className="text-sm text-gray-600">
+                    {product.subServices ? product.subServices.length : 0} sub-services
+                  </span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setEditing(product)}
@@ -332,14 +437,14 @@ export default function ManageProducts() {
         </div>
       ) : (
         <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900">No products found</h3>
-          <p className="mt-1 text-sm text-gray-500">Get started by adding your first product</p>
+          <h3 className="text-lg font-medium text-gray-900">No services found</h3>
+          <p className="mt-1 text-sm text-gray-500">Get started by adding your first service</p>
           <div className="mt-4">
             <button
               onClick={() => navigate("/add-service")}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              Add Product
+              Add Service
             </button>
           </div>
         </div>

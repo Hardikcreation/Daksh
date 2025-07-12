@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <button onclick="testGet()">Test GET</button>
+    <button onclick="testPost()">Test POST</button>
+    <div id="result"></div>
+
+    <script>
+        async function testGet() {
+            try {
+                const response = await fetch('http://localhost:8080/api/products');
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+
+        async function testPost() {
+            try {
+                const formData = new FormData();
+                formData.append('name', 'Test Service');
+                formData.append('visitingPrice', '199');
+                formData.append('subServices', JSON.stringify([{name: 'Test Sub', price: 99}]));
+
+                const response = await fetch('http://localhost:8080/api/products', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html> 

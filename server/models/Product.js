@@ -26,9 +26,13 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    visitingPrice: {
+      type: Number,
+      required: [true, "Visiting price is required"],
+      min: [0, "Visiting price cannot be negative"],
+    },
     price: {
       type: Number,
-      required: [true, "Price is required"],
       min: [0, "Price cannot be negative"],
     },
     rating: {
