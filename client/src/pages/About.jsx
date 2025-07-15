@@ -1,6 +1,9 @@
 import React from "react";
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from "../Components/LanguageSwitcher";
 
 const About = () => {
+  const { t } = useTranslation();
   const services = [
     {
       name: "AC Repair",
@@ -36,14 +39,16 @@ const About = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <LanguageSwitcher />
       {/* Hero Section */}
       <div className="relative bg-blue-600 text-white py-12 md:py-20">
         <div className="absolute inset-0 bg-black opacity-40"></div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">About Daksh</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">{t('about_title', 'About Daksh')}</h1>
           <p className="text-lg sm:text-xl md:text-xl mb-6 sm:mb-8">
-            Your trusted partner for all home service needs
+            {t('about_subtitle', 'Your trusted partner for all home service needs')}
           </p>
+          <button className="bg-white text-blue-600 px-4 py-2 rounded">{t('login')}</button>
         </div>
       </div>
 
@@ -148,3 +153,4 @@ const About = () => {
 };
 
 export default About;
+
