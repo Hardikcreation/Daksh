@@ -36,6 +36,7 @@ import Pricing from './pages/Pricing';
 import Blog from './pages/Blog';
 import CartBar from "./Components/CartBar";
 import MobileStickyNav from './Components/MobileStickyNav';
+import LanguageSwitcher from './Components/LanguageSwitcher';
 export default function App() {
   const location = useLocation();
 
