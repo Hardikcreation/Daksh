@@ -88,7 +88,7 @@ export default function AddService() {
     const subServicesData = subServices.map(sub => ({
       name: sub.name,
       price: sub.price,
-      image: sub.image ? sub.image.name : null
+      image: sub.image ? sub.image.name : null // Send the original file name if uploading
     }));
     formData.append("subServices", JSON.stringify(subServicesData));
 

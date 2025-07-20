@@ -36,6 +36,8 @@ import Pricing from './pages/Pricing';
 import Blog from './pages/Blog';
 import CartBar from "./Components/CartBar";
 import MobileStickyNav from './Components/MobileStickyNav';
+import LanguageSwitcher from './Components/LanguageSwitcher';
+import Subservices from './pages/Subservices';
 export default function App() {
   const location = useLocation();
 
@@ -54,6 +56,8 @@ export default function App() {
           <Route path="/cart" element={<PrivateRoute><Cart /></PrivateRoute>} />
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/products" element={<ProductList />} />
+          <Route path="/subservices/:id" element={<Subservices />} />
+          <Route path="/subservices" element={<Subservices />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />

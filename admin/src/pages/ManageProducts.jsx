@@ -119,9 +119,9 @@ function EditProductModal({ product, onClose, onSave }) {
     const subServicesData = subServices.map(sub => ({
       name: sub.name,
       price: sub.price,
-      image: sub.image ? sub.image.name : (sub.existingImage || null) // Use new image or keep existing
+      image: sub.image ? sub.image.name : (sub.existingImage || null) // Send the original file name if uploading
     }));
-    formData.append("subServices", JSON.stringify(subServicesData || []));
+    formData.append("subServices", JSON.stringify(subServicesData));
 
     // Add subservice images (only new ones)
     subServices.forEach((sub, index) => {
@@ -257,9 +257,10 @@ function EditProductModal({ product, onClose, onSave }) {
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-xs text-gray-600">Current:</span>
                       <img 
-                        src={`${BASE_URL}/uploads/${sub.existingImage}`} 
+                        src={sub.existingImage ? `${BASE_URL}/uploads/${sub.existingImage}` : '/img/default-service.png'} 
                         alt="Current" 
                         className="w-16 h-16 object-cover rounded border"
+                        onError={e => { e.target.src = '/img/default-service.png'; }}
                       />
                       <button 
                         type="button" 
@@ -379,12 +380,10 @@ export default function ManageProducts() {
             <div key={product._id} className="bg-white border rounded-lg shadow-sm hover:shadow-lg transition duration-300">
               <div className="relative h-40 sm:h-48 overflow-hidden">
                 <img
-                  src={`${BASE_URL}/uploads/${product.images && product.images[0] ? product.images[0] : ''}`}
+                  src={product.images && product.images[0] ? `${BASE_URL}/uploads/${product.images[0]}` : '/img/default-service.png'}
                   alt={product.name}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/300x200?text=Service+Image';
-                  }}
+                  onError={e => { e.target.src = '/img/default-service.png'; }}
                 />
               </div>
               <div className="p-4">
@@ -400,10 +399,17 @@ export default function ManageProducts() {
                       {expanded[product._id] ? 'Hide Sub-Services' : 'Show Sub-Services'}
                     </button>
                     {expanded[product._id] && (
-                      <ul className="list-disc list-inside mt-2 text-sm text-gray-800 space-y-1">
+                      <ul className="mt-2 text-sm text-gray-800 space-y-2">
                         {product.subServices.map((sub, idx) => (
-                          <li key={idx}>
-                            {sub.name} – ₹{sub.price}
+                          <li key={idx} className="flex items-center gap-3">
+                            <img
+                              src={sub.image ? `${BASE_URL}/uploads/${sub.image}` : '/img/default-service.png'}
+                              alt={sub.name}
+                              className="w-10 h-10 object-cover rounded border"
+                              onError={e => { e.target.src = '/img/default-service.png'; }}
+                            />
+                            <span className="font-medium">{sub.name}</span>
+                            <span className="text-green-700 font-bold ml-2">₹{sub.price}</span>
                           </li>
                         ))}
                       </ul>

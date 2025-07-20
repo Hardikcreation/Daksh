@@ -1,6 +1,9 @@
 import React from "react";
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from "../Components/LanguageSwitcher";
 
 const About = () => {
+  const { t } = useTranslation();
   const services = [
     {
       name: "AC Repair",
@@ -35,20 +38,22 @@ const About = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-black">
+      <LanguageSwitcher />
       {/* Hero Section */}
       <div className="relative bg-blue-600 text-white py-12 md:py-20">
         <div className="absolute inset-0 bg-black opacity-40"></div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">About Daksh</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">{t('about_title', 'About Daksh')}</h1>
           <p className="text-lg sm:text-xl md:text-xl mb-6 sm:mb-8">
-            Your trusted partner for all home service needs
+            {t('about_subtitle', 'Your trusted partner for all home service needs')}
           </p>
+          <button className="bg-white text-blue-600 px-4 py-2 rounded">{t('login')}</button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 text-white">
         {/* Introduction */}
         <section className="mb-12 sm:mb-16">
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center">
@@ -60,11 +65,11 @@ const About = () => {
               />
             </div>
             <div className="md:w-1/2 w-full">
-              <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-gray-800">Why Choose Daksh?</h2>
-              <p className="text-base sm:text-lg text-gray-600 mb-3 sm:mb-4">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-gray-200">Why Choose Daksh?</h2>
+              <p className="text-base sm:text-lg text-gray-300 mb-3 sm:mb-4">
                 Daksh revolutionizes home services by offering professional, affordable, and reliable solutions right at your doorstep. With just a few clicks, you can book experienced professionals for all your home maintenance needs.
               </p>
-              <p className="text-base sm:text-lg text-gray-600">
+              <p className="text-base sm:text-lg text-gray-300">
                 Our mission is to make home maintenance simple, accessible, and stress-free for everyone. We understand that your home is your sanctuary, and we treat it with the care and respect it deserves.
               </p>
             </div>
@@ -148,3 +153,4 @@ const About = () => {
 };
 
 export default About;
+

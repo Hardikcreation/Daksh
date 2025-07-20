@@ -1,14 +1,28 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useContext, useState, useEffect, useRef } from "react";
+import { useContext, useState, useEffect, useRef, createContext, useMemo } from "react";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
 import { FiUser } from "react-icons/fi";
 import axios from "axios";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+// Theme context for global theme state
+export const ThemeContext = createContext();
+
+export function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+  const value = useMemo(() => ({ theme, setTheme }), [theme]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
 export default function Navbar() {
   const { cartItems } = useContext(CartContext);
   const { isAuthenticated, logout, user, setUser } = useContext(AuthContext);
+  const { theme, setTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [location, setLocation] = useState(user?.location || "Detecting...");
@@ -86,36 +100,34 @@ export default function Navbar() {
     }
   };
 
+  // Theme toggle button
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+
   return (
-    <nav className="bg-gray-900 shadow-lg sticky top-0 z-50">
+    <nav className={`${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-black'} shadow-lg sticky top-0 z-50`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           {/* Left side - Logo & Navigation */}
           <div className="flex items-center">
             <Link
               to="/"
-              className="text-2xl font-bold text-yellow-400 hover:text-yellow-300 transition-colors"
+              className={`text-2xl font-bold ${theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} transition-colors`}
             >
               DAKSH
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden md:ml-8 md:flex md:space-x-6">
-              <Link
-                to="/products"
-                className="text-gray-300 hover:text-white px-3 py-2 font-medium transition-colors"
-              >
-                Services
-              </Link>
+             
               <Link
                 to="/partner-register"
-                className="text-gray-300 hover:text-white px-3 py-2 font-medium transition-colors"
+                className={`${theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} px-3 py-2 font-medium transition-colors`}
               >
                 Partner
               </Link>
               <Link
                 to="/about"
-                className="text-gray-300 hover:text-white px-3 py-2 font-medium transition-colors"
+                className={`${theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} px-3 py-2 font-medium transition-colors`}
               >
                 About
               </Link>
@@ -127,9 +139,9 @@ export default function Navbar() {
             {isAuthenticated && (
               <div
                 onClick={handleManualLocationChange}
-                className="flex items-center text-sm text-gray-300 cursor-pointer hover:text-white transition-colors"
+                className={`flex items-center text-sm ${theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} cursor-pointer transition-colors`}
               >
-                <svg className="w-4 h-4 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 mr-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -142,7 +154,7 @@ export default function Navbar() {
               to="/cart"
               className="p-2 relative"
             >
-              <svg className="w-6 h-6 text-gray-300 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-6 h-6 ${theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} transition-colors`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               {cartItems.length > 0 && (
@@ -157,41 +169,52 @@ export default function Navbar() {
               <div className="flex space-x-2">
                 <Link
                   to="/login"
-                  className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-medium rounded-md transition-colors"
+                  className={`px-3 py-1 bg-yellow-500 hover:bg-yellow-600 ${theme === 'dark' ? 'text-black' : 'text-black'} font-medium rounded-md transition-colors`}
                 >
                   Login
                 </Link>
                 <Link
                   to="/signup"
-                  className="px-3 py-1 border border-gray-300 text-gray-300 hover:bg-gray-800 font-medium rounded-md transition-colors"
+                  className={`px-3 py-1 border border-gray-300 ${theme === 'dark' ? 'text-white hover:bg-gray-800' : 'text-black hover:bg-gray-200'} font-medium rounded-md transition-colors`}
                 >
                   Sign Up
                 </Link>
               </div>
             ) : (
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-300">Hi, {user?.name}</span>
+                <span className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Hi, {user?.name}</span>
                 <Link
                   to="/my-orders"
-                  className="text-sm text-yellow-400 hover:text-white transition-colors"
+                  className={`text-sm ${theme === 'dark' ? 'text-yellow-400 hover:text-gray-300' : 'text-yellow-600 hover:text-black'} transition-colors`}
                 >
                   My Orders
                 </Link>
                 <button
                   onClick={logout}
-                  className="px-3 py-1 text-sm text-gray-300 hover:text-white font-medium transition-colors"
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'}`}
                 >
                   Logout
                 </button>
                 <Link
                   to="/profile"
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-400 hover:bg-yellow-500"
+                  className={`w-10 h-10 flex items-center justify-center rounded-full ${theme === 'dark' ? 'bg-yellow-400 hover:bg-yellow-500' : 'bg-yellow-400 hover:bg-yellow-500'}`}
                 >
-                  <FiUser size={20} className="text-gray-800" />
+                  <FiUser size={20} className={`${theme === 'dark' ? 'text-black' : 'text-black'}`} />
                 </Link>
               </div>
             )}
+
+              {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className={`ml-4 px-2 py-2 rounded-full ${theme === 'dark' ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-200 text-black hover:bg-gray-300'} focus:outline-none`}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? '🌙' : '☀️'}
+          </button>
           </div>
+
+        
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center space-x-3">
