@@ -13,6 +13,8 @@ export default function Subservices() {
   const [error, setError] = useState(null);
   const { addToCart, removeFromCart, cartItems } = useContext(CartContext);
   const [suggestions, setSuggestions] = useState([]);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
 
   useEffect(() => {
     axios
@@ -38,6 +40,14 @@ export default function Subservices() {
       setSuggestions(allSubs);
     });
   }, [id]);
+
+  // Hide toast after 3 seconds
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => setShowToast(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
 
   if (isLoading) return (
     <div className="flex justify-center items-center h-screen bg-white">
@@ -126,7 +136,6 @@ export default function Subservices() {
                           <span className="ml-2 text-sm text-gray-500 line-through">₹{sub.originalPrice}</span>
                         )}
                       </div>
-                      
                       {inCart ? (
                         <button
                           onClick={() => removeFromCart(product._id + '-' + (sub.name || idx))}
@@ -136,14 +145,18 @@ export default function Subservices() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => addToCart({
-                            id: product._id + '-' + (sub.name || idx),
-                            title: sub.name,
-                            price: sub.price,
-                            imageUrl: sub.image,
-                            parentProductId: product._id,
-                            subService: true
-                          })}
+                          onClick={() => {
+                            addToCart({
+                              id: product._id + '-' + (sub.name || idx),
+                              title: sub.name,
+                              price: sub.price,
+                              imageUrl: sub.image,
+                              parentProductId: product._id,
+                              subService: true
+                            });
+                            setToastMsg(`${sub.name} added to cart!`);
+                            setShowToast(true);
+                          }}
                           className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
                         >
                           Book Now
@@ -191,14 +204,18 @@ export default function Subservices() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => addToCart({
-                              id: sub.parentProductId + '-' + (sub.name || idx),
-                              title: sub.name,
-                              price: sub.price,
-                              imageUrl: sub.image,
-                              parentProductId: sub.parentProductId,
-                              subService: true
-                            })}
+                            onClick={() => {
+                              addToCart({
+                                id: sub.parentProductId + '-' + (sub.name || idx),
+                                title: sub.name,
+                                price: sub.price,
+                                imageUrl: sub.image,
+                                parentProductId: sub.parentProductId,
+                                subService: true
+                              });
+                              setToastMsg(`${sub.name} added to cart!`);
+                              setShowToast(true);
+                            }}
                             className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
                           >
                             Book Now
@@ -217,14 +234,41 @@ export default function Subservices() {
         <div className="fixed right-8 bottom-16 z-50">
           <button
             onClick={() => navigate('/cart')}
-            className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg flex items-center justify-center text-white text-3xl hover:scale-110 transition-transform duration-200 border-4 border-white"
+            className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg flex items-center justify-center text-white text-3xl hover:scale-110 transition-transform duration-200 border-4 border-white relative"
             title="Go to Cart"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
+            {cartItems.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-base font-bold border-2 border-white">
+                {cartItems.length}
+              </span>
+            )}
           </button>
         </div>
+        {/* Toast/Popup */}
+        {showToast && (
+          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-white border border-blue-200 shadow-lg rounded-xl px-6 py-4 flex items-center gap-4 animate-fade-in">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-semibold text-gray-800">{toastMsg}</span>
+            <button
+              onClick={() => navigate('/cart')}
+              className="ml-4 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+            >
+              View Cart
+            </button>
+            <button
+              onClick={() => setShowToast(false)}
+              className="ml-2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

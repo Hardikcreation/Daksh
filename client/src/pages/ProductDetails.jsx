@@ -3,6 +3,10 @@ import { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function ProductDetails() {
@@ -20,6 +24,7 @@ export default function ProductDetails() {
   const [totalPrice, setTotalPrice] = useState(0);
   const [subServiceToAdd, setSubServiceToAdd] = useState("");
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
 
   useEffect(() => {
     axios
@@ -40,6 +45,21 @@ export default function ProductDetails() {
       setTotalPrice(product.visitingPrice + extra);
     }
   }, [selectedSubServices, product]);
+
+  useEffect(() => {
+    axios.get(`${BASE_URL}/api/products`).then(res => {
+      const allSuggestions = res.data
+        .filter(p => p._id !== product?._id)
+        .flatMap(p =>
+          (p.subServices || []).map(sub => ({
+            ...sub,
+            parentProductId: p._id,
+            parentProductName: p.name
+          }))
+        );
+      setSuggestions(allSuggestions);
+    });
+  }, [product]);
 
   const handleAddSubService = () => {
     if (!subServiceToAdd) return;
@@ -105,7 +125,7 @@ export default function ProductDetails() {
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Service Not Found</h3>
           <p className="text-gray-600 mb-6">The service you're looking for doesn't exist.</p>
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors"
           >
@@ -121,7 +141,7 @@ export default function ProductDetails() {
       {/* Mobile Header */}
       <div className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
           >
@@ -160,9 +180,8 @@ export default function ProductDetails() {
                     src={`${BASE_URL}/uploads/${img}`}
                     alt="Thumbnail"
                     onClick={() => setMainImage(i)}
-                    className={`cursor-pointer h-20 w-full object-cover rounded-lg border-2 ${
-                      mainImage === i ? "border-blue-500 scale-105" : "border-gray-200"
-                    } transition-all duration-200 hover:border-blue-300`}
+                    className={`cursor-pointer h-20 w-full object-cover rounded-lg border-2 ${mainImage === i ? "border-blue-500 scale-105" : "border-gray-200"
+                      } transition-all duration-200 hover:border-blue-300`}
                   />
                 ))}
             </div>
@@ -178,6 +197,20 @@ export default function ProductDetails() {
                   Visiting Price: ₹{product.visitingPrice}
                 </div>
               </div>
+              {selectedSubServices.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-semibold text-base text-gray-800 mb-1">Selected Sub-services:</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {selectedSubServices.map((sub, i) => (
+                      <div key={sub._id || sub.name || i} className="flex items-center gap-2 border rounded-lg p-2 bg-blue-50">
+                        <span className="font-medium text-gray-800">{sub.name}</span>
+                        <span className="text-green-600 font-bold">₹{sub.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
 
             {/* Desktop Sub-services */}
@@ -238,8 +271,76 @@ export default function ProductDetails() {
               Add to Cart – ₹{totalPrice}
             </button>
           </div>
-        </div>
 
+        </div>
+        {suggestions.length > 0 && (
+          <div className="w-full relative left-1/2 right-1/2 -translate-x-1/2 px-0 mb-8">
+            <h3 className="font-semibold text-lg mb-3 px-8">You may also like</h3>
+            <Swiper
+              modules={[Navigation]}
+              spaceBetween={8} // or try 4, 8, 12 for tighter spacing
+              slidesPerView={4}
+              navigation
+              loop={true}
+              speed={600}
+              style={{ padding: '1rem 0' }}
+            >
+              {suggestions.map((sub, idx) => {
+                const inSelected = selectedSubServices.some(
+                  s =>
+                    (s._id && sub._id && s._id === sub._id) ||
+                    (s.name && sub.name && s.name === sub.name)
+                );
+                return (
+                  <SwiperSlide
+                    key={sub.parentProductId + '-' + (sub._id || sub.name || idx)}
+                  >
+                    <div
+                      className={`border rounded-xl p-4 bg-white hover:shadow-lg transition-shadow duration-300 flex flex-col items-center w-48 min-h-[220px] relative cursor-pointer ${
+                        inSelected ? "ring-2 ring-blue-500 border-blue-500" : "hover:shadow"
+                      }`}
+                      onClick={() => {
+                        if (!inSelected) setSelectedSubServices(prev => [...prev, sub]);
+                      }}
+                    >
+                      <img
+                        src={sub.image ? `${BASE_URL}/uploads/${sub.image}` : "/default-service.png"}
+                        alt={sub.name || sub.title}
+                        className="w-30 h-24 object-cover rounded-lg mb-2"
+                        onError={e => { e.target.src = "/default-service.png"; }}
+                      />
+                      <div className="font-semibold text-base text-gray-800 mb-1">{sub.name || sub.title}</div>
+                      <div className="flex justify-between items-center w-full mt-1">
+                        <div>₹{sub.price || 0}</div>
+                        <div className="text-xs text-gray-500 mb-2">from {sub.parentProductName}</div>
+                      </div>
+                      {inSelected && (
+                        <button
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow hover:bg-red-700"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setSelectedSubServices(prev =>
+                              prev.filter(
+                                s =>
+                                  !(
+                                    (s._id && sub._id && s._id === sub._id) ||
+                                    (s.name && sub.name && s.name === sub.name)
+                                  )
+                              )
+                            );
+                          }}
+                          title="Remove"
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
+                  </SwiperSlide>
+                );
+              })}
+            </Swiper>
+          </div>
+        )}
         {/* Mobile Layout */}
         <div className="md:hidden">
           {/* Mobile Image Gallery */}
@@ -255,7 +356,7 @@ export default function ProductDetails() {
                 className="w-full h-72 object-cover"
               />
             </div>
-            
+
             {/* Image Counter */}
             {Array.isArray(product.images) && product.images.length > 1 && (
               <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
@@ -274,9 +375,8 @@ export default function ProductDetails() {
                     src={`${BASE_URL}/uploads/${img}`}
                     alt="Thumbnail"
                     onClick={() => setMainImage(i)}
-                    className={`cursor-pointer h-16 w-16 flex-shrink-0 object-cover rounded-lg border-2 ${
-                      mainImage === i ? "border-blue-500" : "border-gray-200"
-                    } transition-all duration-200`}
+                    className={`cursor-pointer h-16 w-16 flex-shrink-0 object-cover rounded-lg border-2 ${mainImage === i ? "border-blue-500" : "border-gray-200"
+                      } transition-all duration-200`}
                   />
                 ))}
               </div>
@@ -299,7 +399,7 @@ export default function ProductDetails() {
             {Array.isArray(product.subServices) && product.subServices.length > 0 && (
               <div className="border-t border-gray-200 px-4 py-6">
                 <h3 className="text-lg font-semibold mb-4 text-gray-900">Available Sub-services</h3>
-                
+
                 <div className="space-y-3">
                   {product.subServices.map((subService, index) => (
                     <div key={index} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg">
@@ -325,11 +425,10 @@ export default function ProductDetails() {
                             setSelectedSubServices(prev => [...prev, subService]);
                           }
                         }}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                          selectedSubServices.find(s => s.name === subService.name)
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedSubServices.find(s => s.name === subService.name)
                             ? "bg-red-100 text-red-700"
                             : "bg-blue-100 text-blue-700"
-                        }`}
+                          }`}
                       >
                         {selectedSubServices.find(s => s.name === subService.name) ? "Remove" : "Add"}
                       </button>
@@ -448,6 +547,13 @@ export default function ProductDetails() {
           -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+        .grow-slide {
+          flex-shrink: 1 !important;
+          flex-grow: 1 !important;
+        }
+        .swiper-slide {
+          flex-shrink: 1 !important;
         }
       `}</style>
     </div>

@@ -300,19 +300,19 @@ export default function ProductList() {
                   ?.subServices?.map((sub, idx) => {
                     const product = products.find((p) => p.name.toLowerCase() === "electrician");
                     return (
-                      <Link
-                        key={sub._id || sub.name || idx}
+                    <Link
+                      key={sub._id || sub.name || idx}
                         to={`/subservices/${product._id}`}
-                        className="relative h-40 rounded-lg overflow-hidden bg-cover bg-center shadow-lg group"
-                        style={{
-                          backgroundImage: `url(${sub.image ? `${BASE_URL}/uploads/${sub.image}` : '/default-service-icon.svg'})`,
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="text-white font-semibold text-center px-2">{sub.name}</span>
-                        </div>
-                        <div className="absolute bottom-0 w-full bg-black bg-opacity-50 text-white text-sm text-center py-1">{sub.name}</div>
-                      </Link>
+                      className="relative h-40 rounded-lg overflow-hidden bg-cover bg-center shadow-lg group"
+                      style={{
+                        backgroundImage: `url(${sub.image ? `${BASE_URL}/uploads/${sub.image}` : '/default-service-icon.svg'})`,
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-white font-semibold text-center px-2">{sub.name}</span>
+                      </div>
+                      <div className="absolute bottom-0 w-full bg-black bg-opacity-50 text-white text-sm text-center py-1">{sub.name}</div>
+                    </Link>
                     );
                   })}
               </div>
@@ -327,19 +327,19 @@ export default function ProductList() {
                   ?.subServices?.map((sub, idx) => {
                     const product = products.find((p) => p.name.toLowerCase() === "appliance repair");
                     return (
-                      <Link
-                        key={sub._id || sub.name || idx}
+                    <Link
+                      key={sub._id || sub.name || idx}
                         to={`/subservices/${product._id}`}
-                        className="relative h-40 rounded-lg overflow-hidden bg-cover bg-center shadow-lg group"
-                        style={{
-                          backgroundImage: `url(${sub.image ? `${BASE_URL}/uploads/${sub.image}` : '/default-service-icon.svg'})`,
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="text-white font-semibold text-center px-2">{sub.name}</span>
-                        </div>
-                        <div className="absolute bottom-0 w-full bg-black bg-opacity-50 text-white text-sm text-center py-1">{sub.name}</div>
-                      </Link>
+                      className="relative h-40 rounded-lg overflow-hidden bg-cover bg-center shadow-lg group"
+                      style={{
+                        backgroundImage: `url(${sub.image ? `${BASE_URL}/uploads/${sub.image}` : '/default-service-icon.svg'})`,
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-white font-semibold text-center px-2">{sub.name}</span>
+                      </div>
+                      <div className="absolute bottom-0 w-full bg-black bg-opacity-50 text-white text-sm text-center py-1">{sub.name}</div>
+                    </Link>
                     );
                   })}
               </div>

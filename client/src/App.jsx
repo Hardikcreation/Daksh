@@ -38,6 +38,8 @@ import CartBar from "./Components/CartBar";
 import MobileStickyNav from './Components/MobileStickyNav';
 import LanguageSwitcher from './Components/LanguageSwitcher';
 import Subservices from './pages/Subservices';
+import { ThemeProvider } from './Components/Navbar';
+
 export default function App() {
   const location = useLocation();
 
@@ -45,52 +47,54 @@ export default function App() {
     location.pathname.startsWith('/partner') || location.pathname === '/upload-documents';
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {isPartnerRoute ? <PartnerNavbar /> : <Navbar />}
-      <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/profile" element={<CustomerProfile />} />
-          <Route path="/cart" element={<PrivateRoute><Cart /></PrivateRoute>} />
-          <Route path="/product/:id" element={<ProductDetails />} />
-          <Route path="/products" element={<ProductList />} />
-          <Route path="/subservices/:id" element={<Subservices />} />
-          <Route path="/subservices" element={<Subservices />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/my-orders" element={<PrivateRoute><MyOrders /></PrivateRoute>} />
-          <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/help" element={<HelpCenter />} />
-          <Route path="/partner-register" element={<PartnerRegister />} />
-          <Route path="/partner-login" element={<PartnerLogin />} />
-          <Route path="/upload-documents" element={<UploadDocuments />} />
-          <Route path="/partner-dashboard" element={<PartnerDashboard />} />
-          <Route path="/partner-home" element={<PartnersHome />} />
-          <Route path="/partner-earnings" element={<PartenrsEarning />} />
-          <Route path="/partner-orders" element={<PartenrsOrders />} />
-           <Route path="/blog" element={<Blog />} />
-          <Route path="/pricing" element={<Pricing />} />
-          //for users
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
+    <ThemeProvider>
+      <div className="flex flex-col min-h-screen">
+        {isPartnerRoute ? <PartnerNavbar /> : <Navbar />}
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/profile" element={<CustomerProfile />} />
+            <Route path="/cart" element={<PrivateRoute><Cart /></PrivateRoute>} />
+            <Route path="/product/:id" element={<ProductDetails />} />
+            <Route path="/products" element={<ProductList />} />
+            <Route path="/subservices/:id" element={<Subservices />} />
+            <Route path="/subservices" element={<Subservices />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/my-orders" element={<PrivateRoute><MyOrders /></PrivateRoute>} />
+            <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/help" element={<HelpCenter />} />
+            <Route path="/partner-register" element={<PartnerRegister />} />
+            <Route path="/partner-login" element={<PartnerLogin />} />
+            <Route path="/upload-documents" element={<UploadDocuments />} />
+            <Route path="/partner-dashboard" element={<PartnerDashboard />} />
+            <Route path="/partner-home" element={<PartnersHome />} />
+            <Route path="/partner-earnings" element={<PartenrsEarning />} />
+            <Route path="/partner-orders" element={<PartenrsOrders />} />
+             <Route path="/blog" element={<Blog />} />
+            <Route path="/pricing" element={<Pricing />} />
+            //for users
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-          //for partners
-          <Route path="/reset-password-partner/:token" element={<PartnerResetPassword />} />
-          <Route path="/forget-password-partner" element={<PartnerForgotPassword />} />
+            //for partners
+            <Route path="/reset-password-partner/:token" element={<PartnerResetPassword />} />
+            <Route path="/forget-password-partner" element={<PartnerForgotPassword />} />
 
 
-           <Route path="/partner-update-profile" element={<PartnerUpdateProfile />} />
-          <Route path="/partner-Support" element={<PartnerSupportPage />} />
-        </Routes>
-      </main>
+             <Route path="/partner-update-profile" element={<PartnerUpdateProfile />} />
+            <Route path="/partner-Support" element={<PartnerSupportPage />} />
+          </Routes>
+        </main>
 
-      <CartBar />
-      <MobileStickyNav/>
-      <Footer />
-    </div>
+        <CartBar />
+        <MobileStickyNav/>
+        <Footer />
+      </div>
+    </ThemeProvider>
   );
 }
