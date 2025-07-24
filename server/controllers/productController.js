@@ -34,12 +34,15 @@ export const createProduct = async (req, res) => {
       : [];
     console.log("📥 Parsed subservices:", parsedSubServices);
 
-    // Map subservice images to their corresponding subservices
-    const updatedSubServices = parsedSubServices.map((subService, index) => {
-      const subServiceImage = subServiceImages[index];
+    // Map subservice images to their corresponding subservices by name
+    const updatedSubServices = parsedSubServices.map((subService) => {
+      // Try to find a matching uploaded image by originalname (from frontend)
+      const subServiceImage = subServiceImages.find(img =>
+        img.originalname === subService.image // The frontend should send the original filename in subService.image
+      );
       return {
         ...subService,
-        image: subServiceImage ? subServiceImage.filename : null
+        image: subServiceImage ? subServiceImage.filename : subService.image || null
       };
     });
     console.log("📥 Updated subservices:", updatedSubServices);
@@ -120,12 +123,15 @@ export const updateProduct = async (req, res) => {
       : [];
     console.log("📥 Parsed subservices:", parsedSubServices);
 
-    // Map subservice images to their corresponding subservices
-    const updatedSubServices = parsedSubServices.map((subService, index) => {
-      const subServiceImage = subServiceImages[index];
+    // Map subservice images to their corresponding subservices by name
+    const updatedSubServices = parsedSubServices.map((subService) => {
+      // Try to find a matching uploaded image by originalname (from frontend)
+      const subServiceImage = subServiceImages.find(img =>
+        img.originalname === subService.image // The frontend should send the original filename in subService.image
+      );
       return {
         ...subService,
-        image: subServiceImage ? subServiceImage.filename : subService.image // Keep existing if no new image
+        image: subServiceImage ? subServiceImage.filename : subService.image || null
       };
     });
     console.log("📥 Updated subservices:", updatedSubServices);

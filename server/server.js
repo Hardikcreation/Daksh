@@ -16,6 +16,7 @@ import partnerRoutes from "./routes/partnerRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import helpRoutes from './routes/helpRoutes.js';
+import ticketRoutes from "./routes/ticketRoutes.js";
 
 import cron from "node-cron";
 import { autoReassignExpiredOrdersJob } from "./jobs/autoReassignExpiredOrders.js";
@@ -33,6 +34,7 @@ const __dirname = path.dirname(__filename);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://localhost:5175',
   'https://daksh-client.onrender.com',
 'https://daksh-admin.onrender.com',
   'https://daksh.smartbhopal.city',
@@ -72,6 +74,7 @@ app.use('/api/partners', partnerRoutes);
 app.use('/api/contact', contactRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use('/api/help', helpRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 // ✅ Default API check
 app.get('/', (req, res) => {

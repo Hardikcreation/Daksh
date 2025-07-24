@@ -95,3 +95,29 @@ export const saveAddress = async (req, res) => {
   // Always respond with success
   res.status(201).json({ msg: 'Address saved (duplicate ignored if present)' });
 };
+
+// @desc    Get user profile (for HelpCenter.jsx)
+export const getUserProfileShort = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('name email phone');
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Accept privacy and terms
+export const acceptPolicies = async (req, res) => {
+  try {
+    const { privacyAccepted, termsAccepted } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { privacyAccepted, termsAccepted },
+      { new: true }
+    ).select('-password');
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

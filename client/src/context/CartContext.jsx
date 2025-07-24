@@ -1,5 +1,6 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState, useContext } from "react";
 import axios from "axios";
+import { AuthContext } from "./AuthContext";
 
 const TOKEN_KEY = "token";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -8,6 +9,7 @@ export const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
+  const { logout } = useContext(AuthContext) || {};
 
   const fetchCart = async () => {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -24,6 +26,8 @@ export const CartProvider = ({ children }) => {
     } catch (err) {
       if (err.response?.status === 401) {
         console.warn("⛔ Unauthorized. Please log in again.");
+        if (logout) logout();
+        window.location.href = "/login";
       }
       console.error("❌ Failed to fetch cart:", err);
     }

@@ -166,7 +166,11 @@ export const loginPartner = async (req, res) => {
     const token = jwt.sign({ id: partner._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     // console.log("🔐 JWT generated:", token);
 
-    res.status(200).json({ token, partner });
+    const { _id, name, isVerified, privacyAccepted, termsAccepted } = partner;
+    res.status(200).json({
+      token,
+      partner: { _id, name, isVerified, privacyAccepted, termsAccepted }
+    });
   } catch (err) {
     // console.error("🔥 Login Error:", err.message);
     res.status(500).json({ message: 'Login failed', error: err.message });
@@ -323,9 +327,11 @@ export const getMe = async (req, res) => {
       name: partner.name,
       jobId: partner._id,
       isVerified: partner.isVerified,
-      category: partner.category,          // <-- Important: add this
+      category: partner.category,
       services: partner.services || [],
       email: partner.email,
+      privacyAccepted: partner.privacyAccepted,   // <-- ADD THIS
+      termsAccepted: partner.termsAccepted        // <-- AND THIS
     });
   } catch (err) {
     console.error("Error in /api/partners/me:", err);
@@ -369,5 +375,30 @@ export const updatePersonalDetails = async (req, res) => {
   } catch (err) {
     console.error("updatePersonalDetails error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+export const getPartnerProfileShort = async (req, res) => {
+  try {
+    const partner = await Partner.findById(req.partnerId).select('name email phone');
+    if (!partner) return res.status(404).json({ message: "Partner not found" });
+    res.json(partner);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch partner profile" });
+  }
+};
+
+export const acceptPartnerPolicies = async (req, res) => {
+  try {
+    const { privacyAccepted, termsAccepted } = req.body;
+    const partner = await Partner.findByIdAndUpdate(
+      req.partnerId, // Make sure req.partnerId is set by your auth middleware!
+      { privacyAccepted, termsAccepted },
+      { new: true }
+    ).select('-password');
+    console.log("Updated partner policies:", partner); // <-- Add this for debugging
+    res.json(partner);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

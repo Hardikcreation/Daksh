@@ -75,6 +75,8 @@ const partnerSchema = new mongoose.Schema({
   documents: { type: documentsSchema, required: false }, // Not required at registration!
   aadhaarVerification: { type: aadhaarVerificationSchema, required: false },
   policeVerification: { type: policeVerificationSchema, required: false },
+  privacyAccepted: { type: Boolean, default: false },
+  termsAccepted: { type: Boolean, default: false },
 });
 
 // Check if model already exists before defining

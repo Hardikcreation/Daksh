@@ -66,6 +66,10 @@ const getDisplayAddress = (addr) => {
   );
 };
 
+
+// Utility to safely render text
+const safeText = (val) => (typeof val === "string" || typeof val === "number" ? val : "");
+
 export default function Cart() {
   const { cartItems, removeFromCart, clearCart, updateCartItem } = useContext(CartContext);
   const { isAuthenticated } = useContext(AuthContext);
@@ -369,7 +373,7 @@ export default function Cart() {
                     <div className="flex-1 w-full">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
                         <h2 className="text-base sm:text-lg font-semibold text-gray-800">
-                          {item.title || item.name}
+                          {safeText(item.title) || safeText(item.name)}
                         </h2>
                         <p className="text-green-600 font-bold text-base sm:text-lg">₹{itemTotal}</p>
                       </div>
@@ -447,6 +451,7 @@ export default function Cart() {
                                   <div className="w-full px-1">
                                     <div className="text-sm font-semibold text-gray-800 mb-1 truncate">
                                       {sub.name || sub.title || 'Unnamed Service'}
+                                      {safeText(sub.name) || safeText(sub.title) || 'Unnamed Service'}
                                     </div>
                                     <div className="text-green-600 font-bold text-sm">₹{sub.price || 0}</div>
                                   </div>

@@ -120,14 +120,10 @@ export const login = async (req, res) => {
       expiresIn: "1d"
     });
 
-    // Return user and token
-    res.status(200).json({
+    const { _id, name, privacyAccepted, termsAccepted } = user;
+    res.json({
       token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email
-      }
+      user: { _id, name, privacyAccepted, termsAccepted }
     });
 
   } catch (err) {

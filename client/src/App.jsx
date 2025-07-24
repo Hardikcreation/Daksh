@@ -37,14 +37,75 @@ import Blog from './pages/Blog';
 import CartBar from "./Components/CartBar";
 import MobileStickyNav from './Components/MobileStickyNav';
 import LanguageSwitcher from './Components/LanguageSwitcher';
+import Subservices from './pages/Subservices';
+import TermAndConditions from './pages/TermAndConditions';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import AntiDiscriminationPolicy from './pages/Anti-Discrimination-Ploicy';
+import PolicyModal from './pages/PolicyModal';
+import PartnerPolicyModal from './pages/PartnerPolicyModal';
+import { useContext, useEffect, useState } from "react";
+import { AuthContext } from "./context/AuthContext";
+
 export default function App() {
   const location = useLocation();
+  const { user, setUser } = useContext(AuthContext);
+  const [partner, setPartner] = useState(null);
 
   const isPartnerRoute =
     location.pathname.startsWith('/partner') || location.pathname === '/upload-documents';
 
+  // Fetch user profile for normal users
+  const fetchUserProfile = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
+      }
+    } catch (e) {}
+  };
+
+  // Fetch partner profile for partners
+  const fetchPartnerProfile = async () => {
+    const token = localStorage.getItem("partnerToken");
+    if (!token) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/partners/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPartner(data);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (!user && localStorage.getItem("token")) {
+      fetchUserProfile();
+    }
+    // Only fetch partner if on a partner route
+    if (isPartnerRoute && !partner && localStorage.getItem("partnerToken")) {
+      fetchPartnerProfile();
+    }
+    // eslint-disable-next-line
+  }, [location.pathname]);
+
+  // Show PolicyModal for users, PartnerPolicyModal for partners
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Show user modal if logged in as user and not accepted policies */}
+      {user && !user.privacyAccepted && !user.termsAccepted && (
+        <PolicyModal user={user} refreshUser={fetchUserProfile} />
+      )}
+      {/* Show partner modal if logged in as partner and not accepted policies */}
+      {partner && isPartnerRoute && (!partner.privacyAccepted || !partner.termsAccepted) && (
+        <PartnerPolicyModal partner={partner} refreshPartner={fetchPartnerProfile} />
+      )}
       {isPartnerRoute ? <PartnerNavbar /> : <Navbar />}
       <main className="flex-grow">
         <Routes>
@@ -55,6 +116,8 @@ export default function App() {
           <Route path="/cart" element={<PrivateRoute><Cart /></PrivateRoute>} />
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/products" element={<ProductList />} />
+          <Route path="/subservices/:id" element={<Subservices />} />
+          <Route path="/subservices" element={<Subservices />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
@@ -69,22 +132,21 @@ export default function App() {
           <Route path="/partner-home" element={<PartnersHome />} />
           <Route path="/partner-earnings" element={<PartenrsEarning />} />
           <Route path="/partner-orders" element={<PartenrsOrders />} />
-           <Route path="/blog" element={<Blog />} />
+          <Route path="/blog" element={<Blog />} />
           <Route path="/pricing" element={<Pricing />} />
-          //for users
+          <Route path="/terms" element={<TermAndConditions />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/anti-discrimination-policy" element={<AntiDiscriminationPolicy />} />
+          {/* for users */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
-
-          //for partners
+          {/* for partners */}
           <Route path="/reset-password-partner/:token" element={<PartnerResetPassword />} />
           <Route path="/forget-password-partner" element={<PartnerForgotPassword />} />
-
-
-           <Route path="/partner-update-profile" element={<PartnerUpdateProfile />} />
+          <Route path="/partner-update-profile" element={<PartnerUpdateProfile />} />
           <Route path="/partner-Support" element={<PartnerSupportPage />} />
         </Routes>
       </main>
-
       <CartBar />
       <MobileStickyNav/>
       <Footer />

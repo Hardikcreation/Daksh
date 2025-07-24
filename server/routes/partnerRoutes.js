@@ -11,6 +11,8 @@ import {
   resetPassword,
   getMe,
   updatePersonalDetails,
+  getPartnerProfileShort,
+  acceptPartnerPolicies // <-- Add this import
 } from "../controllers/partnerController.js";
 import { handlePartnerSupport } from "../controllers/partnerSupportController.js";
 import {
@@ -76,5 +78,11 @@ router.use((req, res, next) => {
   }
   next();
 });
+
+// Get current partner profile (short, for PartnerSupportPage)
+router.get("/profile", protectPartner, getPartnerProfileShort);
+
+// ✅ Accept Policies
+router.post('/accept-policies', protectPartner, acceptPartnerPolicies);
 
 export default router;

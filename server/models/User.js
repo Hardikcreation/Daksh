@@ -24,7 +24,9 @@ const userSchema = new mongoose.Schema({
     default: Date.now
   },
   isAdmin: { type: Boolean, default: false },
-   addresses: [addressSchema] 
+   addresses: [addressSchema],
+  privacyAccepted: { type: Boolean, default: false },
+  termsAccepted: { type: Boolean, default: false },
 }, { timestamps: true });
 
 

@@ -78,7 +78,7 @@ export default function ManageUsers() {
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
                           <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm sm:text-base">
-                            {user.name.charAt(0).toUpperCase()}
+                            {(user.name && user.name.length > 0) ? user.name.charAt(0).toUpperCase() : "?"}
                           </div>
                         </div>
                         <div className="ml-3 sm:ml-4">
@@ -86,7 +86,7 @@ export default function ManageUsers() {
                             {user.name}
                           </div>
                           <div className="text-xs sm:text-sm text-gray-500 hidden sm:block">
-                            @{user.username || user.name.toLowerCase()}
+                            @{user.username || (user.name ? user.name.toLowerCase() : "unknown")}
                           </div>
                         </div>
                       </div>
