@@ -13,5 +13,10 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 1000 // optional: suppress large chunk warning
-  }
+  },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:8080', // or whatever your backend port is
+    },
+  },
 })

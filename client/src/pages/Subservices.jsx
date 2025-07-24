@@ -202,18 +202,7 @@ export default function Subservices() {
                       key={idx} 
                       className={`min-w-[200px] max-w-[220px] border rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 relative cursor-pointer group ${inCart ? 'ring-2 ring-blue-500' : ''}`}
                       onClick={() => {
-                        if (!inCart) {
-                          addToCart({
-                            id: sub.parentProductId + '-' + (sub.name || idx),
-                            title: sub.name,
-                            price: sub.price,
-                            imageUrl: sub.image,
-                            parentProductId: sub.parentProductId,
-                            subService: true
-                          });
-                          setToastMsg(`${sub.name} added to cart!`);
-                          setShowToast(true);
-                        }
+                        navigate(`/subservices/${sub.parentProductId}`);
                       }}
                     >
                       <div className="h-32 bg-gray-100 overflow-hidden">
@@ -229,18 +218,6 @@ export default function Subservices() {
                         <div className="text-xs text-gray-500 mb-2">from {sub.parentProductName}</div>
                         <div className="text-sm font-semibold">₹{sub.price}</div>
                       </div>
-                      {inCart && (
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            removeFromCart(sub.parentProductId + '-' + (sub.name || idx));
-                          }}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-lg font-bold shadow hover:bg-red-600 z-10"
-                          title="Remove"
-                        >
-                          ×
-                        </button>
-                      )}
                     </div>
                   );
                 })}

@@ -39,6 +39,7 @@ import MobileStickyNav from './Components/MobileStickyNav';
 import LanguageSwitcher from './Components/LanguageSwitcher';
 import Subservices from './pages/Subservices';
 import { ThemeProvider } from './Components/Navbar';
+import Payment from './pages/Payment';
 
 export default function App() {
   const location = useLocation();
@@ -77,6 +78,7 @@ export default function App() {
             <Route path="/partner-orders" element={<PartenrsOrders />} />
              <Route path="/blog" element={<Blog />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/payment" element={<Payment />} />
             //for users
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />

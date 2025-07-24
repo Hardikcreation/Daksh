@@ -16,6 +16,7 @@ import partnerRoutes from "./routes/partnerRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import helpRoutes from './routes/helpRoutes.js';
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 import cron from "node-cron";
 import { autoReassignExpiredOrdersJob } from "./jobs/autoReassignExpiredOrders.js";
@@ -73,6 +74,7 @@ app.use('/api/partners', partnerRoutes);
 app.use('/api/contact', contactRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use('/api/help', helpRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // ✅ Default API check
 app.get('/', (req, res) => {

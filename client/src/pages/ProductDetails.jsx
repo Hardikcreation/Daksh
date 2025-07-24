@@ -286,21 +286,14 @@ export default function ProductDetails() {
               style={{ padding: '1rem 0' }}
             >
               {suggestions.map((sub, idx) => {
-                const inSelected = selectedSubServices.some(
-                  s =>
-                    (s._id && sub._id && s._id === sub._id) ||
-                    (s.name && sub.name && s.name === sub.name)
-                );
                 return (
                   <SwiperSlide
                     key={sub.parentProductId + '-' + (sub._id || sub.name || idx)}
                   >
                     <div
-                      className={`border rounded-xl p-4 bg-white hover:shadow-lg transition-shadow duration-300 flex flex-col items-center w-48 min-h-[220px] relative cursor-pointer ${
-                        inSelected ? "ring-2 ring-blue-500 border-blue-500" : "hover:shadow"
-                      }`}
+                      className={`border rounded-xl p-4 bg-white hover:shadow-lg transition-shadow duration-300 flex flex-col items-center w-48 min-h-[220px] relative cursor-pointer`}
                       onClick={() => {
-                        if (!inSelected) setSelectedSubServices(prev => [...prev, sub]);
+                        navigate(`/subservices/${sub.parentProductId}`);
                       }}
                     >
                       <img
@@ -314,26 +307,6 @@ export default function ProductDetails() {
                         <div>₹{sub.price || 0}</div>
                         <div className="text-xs text-gray-500 mb-2">from {sub.parentProductName}</div>
                       </div>
-                      {inSelected && (
-                        <button
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow hover:bg-red-700"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setSelectedSubServices(prev =>
-                              prev.filter(
-                                s =>
-                                  !(
-                                    (s._id && sub._id && s._id === sub._id) ||
-                                    (s.name && sub.name && s.name === sub.name)
-                                  )
-                              )
-                            );
-                          }}
-                          title="Remove"
-                        >
-                          &times;
-                        </button>
-                      )}
                     </div>
                   </SwiperSlide>
                 );

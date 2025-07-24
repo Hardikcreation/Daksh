@@ -95,6 +95,24 @@ export default function Cart() {
   const navigate = useNavigate();
   const [toastMsg, setToastMsg] = useState("");
   const [showToast, setShowToast] = useState(false);
+  const [selectedTip, setSelectedTip] = useState(null);
+  const [showCustomTip, setShowCustomTip] = useState(false);
+  const [customTip, setCustomTip] = useState(0);
+
+  // 1. Calculate subtotal FIRST
+  const subtotal = cartItems.reduce((acc, item) => {
+    const subTotal = (Array.isArray(item.subServices) ? item.subServices : []).reduce(
+      (subAcc, sub) => subAcc + Number(sub.price), 0
+    );
+    return acc + Number(item.price) + subTotal;
+  }, 0);
+
+  // 2. Apply 15% discount
+  const discount = subtotal * 0.15;
+  const discountedSubtotal = subtotal - discount;
+  const taxRate = 0.18;
+  const taxAmount = discountedSubtotal * taxRate;
+  const total = discountedSubtotal + taxAmount;
 
   // For 3 date options: today, tomorrow, after tomorrow
   const today = new Date();
@@ -184,13 +202,6 @@ export default function Cart() {
       setAddressType("Home");
     }
   }, [selectedAddressIndex, savedAddresses]);
-
-  const subtotal = cartItems.reduce((acc, item) => {
-    const subTotal = (Array.isArray(item.subServices) ? item.subServices : []).reduce(
-      (subAcc, sub) => subAcc + Number(sub.price), 0
-    );
-    return acc + Number(item.price) + subTotal;
-  }, 0);
 
   const validateForm = () => {
     const newErrors = {};
@@ -370,22 +381,33 @@ export default function Cart() {
                   className="p-3 sm:p-5 rounded-xl shadow-sm border border-gray-200 bg-white hover:shadow-md transition-shadow duration-200"
                 >
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                    <img
-                      src={item.imageUrl
-                        ? `${BASE_URL}/uploads/${item.imageUrl}`
-                        : (Array.isArray(item.images) && item.images[0]
-                          ? `${BASE_URL}/uploads/${item.images[0]}`
-                          : "/default-service.png")
-                      }
-                      alt={item.title}
-                      className="w-full sm:w-24 h-24 object-cover rounded-lg mb-4 sm:mb-0"
-                    />
+                    <div className="flex flex-col items-center">
+                      <img
+                        src={item.imageUrl
+                          ? `${BASE_URL}/uploads/${item.imageUrl}`
+                          : (Array.isArray(item.images) && item.images[0]
+                            ? `${BASE_URL}/uploads/${item.images[0]}`
+                            : "/default-service.png")
+                        }
+                        alt={item.title}
+                        className="w-26 h-20 object-cover rounded-lg"
+                      />
+                      <div className="flex items-center justify-between w-full mt-2">
+                        <span className="text-green-600 font-bold text-base">₹{itemTotal}</span>
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="ml-2 px-2 py-1 rounded-lg flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs"
+                        >
+                          <FiTrash2 size={14} />
+                          
+                        </button>
+                      </div>
+                    </div>
                     <div className="flex-1 w-full">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
                         <h2 className="text-base sm:text-lg font-semibold text-gray-800">
                           {safeText(item.title) || safeText(item.name)}
                         </h2>
-                        <p className="text-green-600 font-bold text-base sm:text-lg">₹{itemTotal}</p>
                       </div>
                       <p className="text-xs sm:text-sm mt-1 text-gray-600">Base Price: ₹{mainPrice}</p>
                       {/* Selected Subservices with Images */}
@@ -424,13 +446,7 @@ export default function Cart() {
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1.5 self-end sm:self-center transition-colors duration-200 mt-2 sm:mt-0 bg-red-50 hover:bg-red-100 text-red-600"
-                    >
-                      <FiTrash2 size={16} />
-                      <span className="text-xs sm:text-sm">Remove</span>
-                    </button>
+                   
                   </div>
                 </div>
               );
@@ -449,7 +465,7 @@ export default function Cart() {
                 </button>
                 <div
                   ref={availableSubRef}
-                  className="flex gap-2 overflow-x-auto whitespace-nowrap pb-2 hide-scrollbar"
+                  className="flex gap-2 overflow-x-auto whitespace-nowrap p-2 m-2 hide-scrollbar"
                   style={{ scrollBehavior: 'smooth' }}
                 >
                   {cartItems.flatMap((item, idx) => {
@@ -542,56 +558,104 @@ export default function Cart() {
           <div className="lg:col-span-1">
             <div className="p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 bg-white sticky top-6">
               <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 pb-2 border-b text-gray-900 border-gray-200">
-                Order Summary
+                Payment summary
               </h3>
-              {(() => {
-                const taxRate = 0.18;
-                const taxAmount = subtotal * taxRate;
-                const total = subtotal + taxAmount;
-                return (
-                  <>
-                    <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                      <div className="flex justify-between text-gray-600">
-                        <span className="text-sm">Subtotal</span>
-                        <span className="text-sm">₹{subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-600">
-                        <span className="text-sm">Tax (18%)</span>
-                        <span className="text-sm">₹{taxAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between pt-2 sm:pt-3 border-t border-gray-200">
-                        <span className="font-medium text-sm">Total</span>
-                        <span className="font-bold text-base sm:text-lg text-green-700">
-                          ₹{total.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2 sm:space-y-3">
-                      <button
-                        onClick={() => {
-                          if (!isAuthenticated) {
-                            alert("Please login to proceed with checkout.");
-                            navigate("/login");
-                            return;
-                          }
-                          setShowConfirmation(true);
-                        }}
-                        className="w-full px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors duration-200 shadow-md hover:shadow-lg text-base sm:text-lg bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        <FiCheck size={18} />
-                        Proceed to Checkout
-                      </button>
-                      <button
-                        onClick={clearCart}
-                        className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-colors duration-200 text-sm sm:text-base text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 bg-white hover:bg-red-50"
-                      >
-                        <FiTrash2 size={16} />
-                        Clear Cart
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
+              {/* Discount badge */}
+              <div className="mb-2 flex items-center gap-2">
+                <span className="inline-block bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded">15% OFF on this order!</span>
+              </div>
+              <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                <div className="flex justify-between text-gray-600">
+                  <span className="text-sm">Item total</span>
+                  <span className="text-sm">₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-green-600">
+                  <span className="text-sm">15% Discount</span>
+                  <span className="text-sm">-₹{discount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span className="text-sm">Taxes and Fee</span>
+                  <span className="text-sm">₹{taxAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between pt-2 sm:pt-3 border-t border-gray-200">
+                  <span className="font-medium text-sm">Total amount</span>
+                  <span className="font-bold text-base sm:text-lg text-gray-900">
+                    ₹{total.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-sm">Amount to pay</span>
+                  <span className="font-bold text-base sm:text-lg text-green-700">
+                    ₹{total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              {/* Optional: Tip section */}
+              <div className="mb-4">
+                <div className="font-medium text-sm mb-2">Add a tip to thank the Professional</div>
+                <div className="flex gap-2">
+                  {[50, 75, 100].map((tip) => (
+                    <button
+                      key={tip}
+                      className={`px-3 py-1.5 rounded-lg border text-sm font-semibold ${
+                        selectedTip === tip
+                          ? "bg-blue-50 border-blue-600 text-blue-700"
+                          : "bg-white border-gray-300 text-gray-700 hover:bg-blue-50"
+                      }`}
+                      onClick={() => setSelectedTip(tip)}
+                    >
+                      ₹{tip}
+                      {tip === 75 && (
+                        <span className="ml-2 text-xs text-green-600 bg-green-100 px-1.5 py-0.5 rounded">POPULAR</span>
+                      )}
+                    </button>
+                  ))}
+                  <button
+                    className={`px-3 py-1.5 rounded-lg border text-sm font-semibold ${
+                      selectedTip === "custom"
+                        ? "bg-blue-50 border-blue-600 text-blue-700"
+                        : "bg-white border-gray-300 text-gray-700 hover:bg-blue-50"
+                    }`}
+                    onClick={() => setShowCustomTip(true)}
+                  >
+                    Custom
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">100% of the tip goes to the professional.</div>
+                {showCustomTip && (
+                  <input
+                    type="number"
+                    min={0}
+                    className="mt-2 border rounded px-2 py-1 w-24"
+                    placeholder="Enter tip"
+                    value={customTip}
+                    onChange={e => setCustomTip(Number(e.target.value))}
+                  />
+                )}
+              </div>
+              <div className="space-y-2 sm:space-y-3">
+                <button
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      alert("Please login to proceed with checkout.");
+                      navigate("/login");
+                      return;
+                    }
+                    setShowConfirmation(true);
+                  }}
+                  className="w-full px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors duration-200 shadow-md hover:shadow-lg text-base sm:text-lg bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <FiCheck size={18} />
+                  Proceed to Checkout
+                </button>
+                <button
+                  onClick={clearCart}
+                  className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-colors duration-200 text-sm sm:text-base text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 bg-white hover:bg-red-50"
+                >
+                  <FiTrash2 size={16} />
+                  Clear Cart
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -626,45 +690,7 @@ export default function Cart() {
                         key={sub.parentProductId + '-' + (sub._id || sub.name || idx)}
                         className={`border rounded-xl p-4 bg-white hover:shadow-lg transition-shadow duration-300 flex flex-col items-center w-48 min-h-[200px] relative cursor-pointer flex-shrink-0 ${inCart ? "ring-2 ring-blue-500 border-blue-500" : "hover:shadow"}`}
                         onClick={() => {
-                          if (inCart) {
-                            updateCartItem({
-                              ...cartItem,
-                              subServices: cartItem.subServices.filter(
-                                s =>
-                                  !(
-                                    (s._id && sub._id && s._id === sub._id) ||
-                                    (s.name && sub.name && s.name === sub.name)
-                                  )
-                              ),
-                            });
-                          } else {
-                            const existingCartItem = cartItems.find(item => item.id === sub.parentProductId);
-                            if (existingCartItem) {
-                              updateCartItem({
-                                ...existingCartItem,
-                                subServices: [
-                                  ...(Array.isArray(existingCartItem.subServices) ? existingCartItem.subServices : []),
-                                  sub,
-                                ],
-                              });
-                              setToastMsg(`${sub.name || sub.title} added to cart!`);
-                              setShowToast(true);
-                            } else {
-                              // Fetch the full product for base price and image
-                              axios.get(`${BASE_URL}/api/products/${sub.parentProductId}`).then(res => {
-                                const product = res.data;
-                                addToCart({
-                                  id: product._id,
-                                  title: product.name,
-                                  price: product.visitingPrice, // <-- real base price
-                                  imageUrl: product.images && product.images[0] ? product.images[0] : "",
-                                  subServices: [sub],
-                                });
-                                setToastMsg(`${sub.name || sub.title} added to cart!`);
-                                setShowToast(true);
-                              });
-                            }
-                          }
+                          navigate(`/subservices/${sub.parentProductId}`);
                         }}
                       >
                         <img
@@ -678,27 +704,7 @@ export default function Cart() {
                           <div className="text-green-600 font-bold text-base">₹{sub.price || 0}</div>
                           <div className="text-xs text-gray-500 mb-2 ml-2">from {sub.parentProductName}</div>
                         </div>
-                        {inCart && (
-                          <button
-                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow hover:bg-red-700"
-                            onClick={e => {
-                              e.stopPropagation();
-                              updateCartItem({
-                                ...cartItem,
-                                subServices: cartItem.subServices.filter(
-                                  s =>
-                                    !(
-                                      (s._id && sub._id && s._id === sub._id) ||
-                                      (s.name && sub.name && s.name === sub.name)
-                                    )
-                                ),
-                              });
-                            }}
-                            title="Remove"
-                          >
-                            &times;
-                          </button>
-                        )}
+                        {/* Remove button is not needed here anymore */}
                       </div>
               );
             })}
@@ -950,7 +956,29 @@ export default function Cart() {
         </button>
         <button
           className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-base bg-green-600 hover:bg-green-700 text-white shadow-md transition-all disabled:opacity-50"
-          onClick={placeOrder}
+          onClick={() => {
+            if (!validateForm()) return;
+            navigate("/payment", {
+              state: {
+                orderDetails: {
+                  items: cartItems,
+                  total: total,
+                  address: {
+                    houseNumber,
+                    street,
+                    landmark,
+                    addressType,
+                    fullAddress: `${houseNumber}, ${street}${landmark ? `, Landmark: ${landmark}` : ""} (${addressType})`,
+                    timeSlot: `${formatDateYMD(selectedDate)} at ${formatTimeHM(selectedTime)}`
+                  },
+                  // Optionally add user info for Razorpay prefill
+                  // userName: user?.name,
+                  // userEmail: user?.email,
+                  // userPhone: user?.phone,
+                }
+              }
+            });
+          }}
           disabled={isPlacingOrder}
         >
           {isPlacingOrder ? (

@@ -31,7 +31,7 @@ export const createOrder = async (req, res) => {
 // Place order (with codes)
 export const placeOrder = async (req, res) => {
   try {
-    const { items, totalAmount, address } = req.body;
+    const { items, totalAmount, address, paymentId, paymentType } = req.body;
     const userId = req.userId;
 
     if (!items || items.length === 0)
@@ -42,11 +42,32 @@ export const placeOrder = async (req, res) => {
     let completeCode = generate4DigitCode();
     while (completeCode === happyCode) completeCode = generate4DigitCode();
 
+    if (paymentType === "post") {
+      // Allow order creation without paymentId
+      // Set status to Pending or Confirmed as per your flow
+      const newOrder = new Order({
+        user: req.userId,
+        items,
+        totalAmount,
+        address: { ...address },
+        status: "Pending", // or "Confirmed"
+        requestStatus: "Pending",
+        paymentType: "post",
+        createdAt: new Date(),
+      });
+      await newOrder.save();
+      // Assign partner as usual
+      req.params.orderId = newOrder._id;
+      await assignPartnerAutomatically(req, { status: () => ({ json: () => {} }) });
+      return res.status(201).json({ message: "Order placed; partner will respond shortly.", order: newOrder });
+    }
+
     const newOrder = new Order({
       user: req.userId,
       items,
       totalAmount,
       address: { ...address },
+      paymentId,
       status: "Confirmed",
       requestStatus: "Pending",
       happyCode,
