@@ -1,10 +1,13 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import ReactDatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+// Remove Swiper imports
+// import { Swiper, SwiperSlide } from 'swiper/react';
+// import { Navigation } from 'swiper/modules';
+// import 'swiper/css';
+// import 'swiper/css/navigation';
 import {
   FiTrash2,
   FiX,
@@ -13,9 +16,14 @@ import {
   FiMapPin,
   FiHome,
   FiCalendar,
+  FiChevronLeft,
+  FiChevronRight,
 } from "react-icons/fi";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Utility to safely render text in JSX
+const safeText = (val) => (typeof val === "string" || typeof val === "number" ? val : "");
 
 function formatDateYMD(date) {
   if (!date) return "";
@@ -35,7 +43,7 @@ const generateTimeSlots = (selectedDate) => {
   let endHour = 19;
   let now = new Date();
   if (isToday) {
-    now.setMinutes(now.getMinutes() + 10);
+    now.setMinutes(now.getMinutes() + 120);
     startHour = Math.max(startHour, now.getHours());
   }
   for (let hour = startHour; hour <= endHour; hour++) {
@@ -48,9 +56,8 @@ const generateTimeSlots = (selectedDate) => {
     });
   }
   return slots;
-};
+}
 
-// Utility for displaying address, showing "Landmark" only if exists and valid
 const getDisplayAddress = (addr) => {
   const hasLandmark =
     addr.landmark &&
@@ -66,12 +73,8 @@ const getDisplayAddress = (addr) => {
   );
 };
 
-
-// Utility to safely render text
-const safeText = (val) => (typeof val === "string" || typeof val === "number" ? val : "");
-
 export default function Cart() {
-  const { cartItems, removeFromCart, clearCart, updateCartItem } = useContext(CartContext);
+  const { cartItems, removeFromCart, clearCart, updateCartItem, addToCart } = useContext(CartContext);
   const { isAuthenticated } = useContext(AuthContext);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -87,9 +90,29 @@ export default function Cart() {
   const [selectedTime, setSelectedTime] = useState(null);
   const [errors, setErrors] = useState({});
   const [productSubServices, setProductSubServices] = useState({});
-  const [selectedSub, setSelectedSub] = useState({});
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 767);
+  const [suggestions, setSuggestions] = useState([]);
   const navigate = useNavigate();
+  const [toastMsg, setToastMsg] = useState("");
+  const [showToast, setShowToast] = useState(false);
+  const [selectedTip, setSelectedTip] = useState(null);
+  const [showCustomTip, setShowCustomTip] = useState(false);
+  const [customTip, setCustomTip] = useState(0);
+
+  // 1. Calculate subtotal FIRST
+  const subtotal = cartItems.reduce((acc, item) => {
+    const subTotal = (Array.isArray(item.subServices) ? item.subServices : []).reduce(
+      (subAcc, sub) => subAcc + Number(sub.price), 0
+    );
+    return acc + Number(item.price) + subTotal;
+  }, 0);
+
+  // 2. Apply 15% discount
+  const discount = subtotal * 0.15;
+  const discountedSubtotal = subtotal - discount;
+  const taxRate = 0.18;
+  const taxAmount = discountedSubtotal * taxRate;
+  const total = discountedSubtotal + taxAmount;
 
   // For 3 date options: today, tomorrow, after tomorrow
   const today = new Date();
@@ -98,13 +121,17 @@ export default function Cart() {
   const afterTomorrow = new Date(today);
   afterTomorrow.setDate(today.getDate() + 2);
   const availableDates = [today, tomorrow, afterTomorrow];
+
+  const availableSubRef = useRef();
+  const suggestionsRef = useRef();
+  const scrollByAmount = 300;
+
   useEffect(() => {
     async function fetchSubServices() {
       const result = {};
       for (const item of cartItems) {
         try {
           const res = await axios.get(`${BASE_URL}/api/products/${item.id}`);
-          console.log('Product data:', res.data); // Debug log
           result[item.id] = Array.isArray(res.data?.subServices) ? res.data.subServices : [];
         } catch {
           result[item.id] = [];
@@ -115,42 +142,32 @@ export default function Cart() {
     if (cartItems.length > 0) fetchSubServices();
   }, [cartItems]);
 
-  // Responsive mobile check
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 767);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const subtotal = cartItems.reduce((acc, item) => {
-    const subTotal = (Array.isArray(item.subServices) ? item.subServices : []).reduce(
-      (subAcc, sub) => subAcc + Number(sub.price), 0
-    );
-    return acc + Number(item.price) + subTotal;
-  }, 0);
-
-  const handleAddSubService = (item) => {
-    const allSubs = Array.isArray(productSubServices[item.id]) ? productSubServices[item.id] : [];
-    const subToAdd = allSubs.find(sub => String(sub.title) === String(selectedSub[item.id]));
-    if (!subToAdd) return;
-    if ((Array.isArray(item.subServices) ? item.subServices : []).some(s => String(s.title) === String(subToAdd.title))) return;
-    const updatedItem = {
-      ...item,
-      subServices: [...(Array.isArray(item.subServices) ? item.subServices : []), subToAdd]
-    };
-    updateCartItem(updatedItem);
-    setSelectedSub(prev => ({ ...prev, [item.id]: "" }));
-  };
-
-  const handleRemoveSubService = (itemId, subServiceTitle) => {
-    const item = cartItems.find(item => item.id === itemId);
-    if (!item) return;
-    const updatedSubServices = (Array.isArray(item.subServices) ? item.subServices : []).filter(sub => String(sub.title) !== String(subServiceTitle));
-    updateCartItem({
-      ...item,
-      subServices: updatedSubServices
+  useEffect(() => {
+    axios.get(`${BASE_URL}/api/products`).then(res => {
+      const cartSubKeys = new Set(
+        cartItems.flatMap(item =>
+          (item.subServices || []).map(sub => (sub._id || sub.name))
+        )
+      );
+      const allSuggestions = res.data
+        .filter(p => !cartItems.some(ci => ci.id === p._id))
+        .flatMap(p =>
+          (p.subServices || []).map(sub => ({
+            ...sub,
+            parentProductId: p._id,
+            parentProductName: p.name
+          }))
+        )
+        .filter(sub => !cartSubKeys.has(sub._id || sub.name));
+      setSuggestions(allSuggestions);
     });
-  };
+  }, [cartItems]);
 
   useEffect(() => {
     if (showConfirmation) {
@@ -185,57 +202,6 @@ export default function Cart() {
       setAddressType("Home");
     }
   }, [selectedAddressIndex, savedAddresses]);
-
-  const handleUseMyLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        await fetchAddressFromCoords(latitude, longitude);
-      },
-      () => {
-        alert("Unable to retrieve your location. Permission denied or unavailable.");
-      }
-    );
-  };
-
-  const fetchAddressFromCoords = async (lat, lon) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-      );
-      const data = await response.json();
-      const address = data.address || {};
-      setHouseNumber(address.house_number || "");
-      setStreet(
-        [
-          address.road,
-          address.neighbourhood,
-          address.suburb,
-          address.village,
-          address.town,
-          address.city,
-        ]
-          .filter(Boolean)
-          .join(", ")
-      );
-      setLandmark(address.state_district || address.state || "");
-      setAddressType("Home");
-    } catch (e) {
-      alert("Failed to get address from your location.");
-    }
-  };
-
-  const handleEnterNewAddress = () => {
-    setSelectedAddressIndex(-1);
-    setHouseNumber("");
-    setStreet("");
-    setLandmark("");
-    setAddressType("Home");
-  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -303,6 +269,64 @@ export default function Cart() {
     }
   };
 
+  const handleEnterNewAddress = () => {
+    setSelectedAddressIndex(-1);
+    setHouseNumber("");
+    setStreet("");
+    setLandmark("");
+    setAddressType("Home");
+  };
+
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        await fetchAddressFromCoords(latitude, longitude);
+      },
+      () => {
+        alert("Unable to retrieve your location. Permission denied or unavailable.");
+      }
+    );
+  };
+
+  const fetchAddressFromCoords = async (lat, lon) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+      );
+      const data = await response.json();
+      const address = data.address || {};
+      setHouseNumber(address.house_number || "");
+      setStreet(
+        [
+          address.road,
+          address.neighbourhood,
+          address.suburb,
+          address.village,
+          address.town,
+          address.city,
+        ]
+          .filter(Boolean)
+          .join(", ")
+      );
+      setLandmark(address.state_district || address.state || "");
+      setAddressType("Home");
+    } catch (e) {
+      alert("Failed to get address from your location.");
+    }
+  };
+
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => setShowToast(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
+
   if (cartItems.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-gray-50 text-gray-800">
@@ -335,7 +359,7 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen py-4 px-2 sm:py-8 sm:px-4 bg-gray-50 text-gray-800">
-      <div className="max-w-5xl mx-auto">
+      <div className="mx-auto">
         <div className="mb-4 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Your Cart</h1>
           <p className="mt-1 text-sm sm:text-base text-gray-600">
@@ -351,186 +375,350 @@ export default function Cart() {
               const subTotal = subServices.reduce((acc, sub) => acc + Number(sub.price), 0);
               const mainPrice = Number(item.price);
               const itemTotal = mainPrice + subTotal;
-              const availableSubs = allSubs.filter(sub =>
-                !subServices.some(s => String(s.title) === String(sub.title))
-              );
               return (
                 <div
                   key={item.id || idx}
                   className="p-3 sm:p-5 rounded-xl shadow-sm border border-gray-200 bg-white hover:shadow-md transition-shadow duration-200"
                 >
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                    <img
-                      src={item.imageUrl
-                        ? `${BASE_URL}/uploads/${item.imageUrl}`
-                        : (Array.isArray(item.images) && item.images[0]
-                          ? `${BASE_URL}/uploads/${item.images[0]}`
-                          : "/default-service.png")
-                      }
-                      alt={item.title}
-                      className="w-full sm:w-24 h-24 object-cover rounded-lg mb-4 sm:mb-0"
-                    />
+                    <div className="flex flex-col items-center">
+                      <img
+                        src={item.imageUrl
+                          ? `${BASE_URL}/uploads/${item.imageUrl}`
+                          : (Array.isArray(item.images) && item.images[0]
+                            ? `${BASE_URL}/uploads/${item.images[0]}`
+                            : "/default-service.png")
+                        }
+                        alt={item.title}
+                        className="w-26 h-20 object-cover rounded-lg"
+                      />
+                      <div className="flex items-center justify-between w-full mt-2">
+                        <span className="text-green-600 font-bold text-base">₹{itemTotal}</span>
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="ml-2 px-2 py-1 rounded-lg flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs"
+                        >
+                          <FiTrash2 size={14} />
+                          
+                        </button>
+                      </div>
+                    </div>
                     <div className="flex-1 w-full">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
                         <h2 className="text-base sm:text-lg font-semibold text-gray-800">
                           {safeText(item.title) || safeText(item.name)}
                         </h2>
-                        <p className="text-green-600 font-bold text-base sm:text-lg">₹{itemTotal}</p>
                       </div>
                       <p className="text-xs sm:text-sm mt-1 text-gray-600">Base Price: ₹{mainPrice}</p>
                       {/* Selected Subservices with Images */}
-                  
-                      {/* Available Subservices as Cards */}
-                      {allSubs.length > 0 && (
+                      {subServices.length > 0 && (
+                        <div className="mt-2">
+                          <h4 className="font-semibold text-base mb-2">Selected Sub-services</h4>
+                          <div className="flex flex-wrap gap-3">
+                            {subServices.map((sub, subIdx) => (
+                              <div key={sub._id || sub.name || subIdx} className="flex items-center gap-2 border rounded-lg p-2 bg-gray-50 relative">
+                                <img
+                                  src={sub.image ? `${BASE_URL}/uploads/${sub.image}` : "/default-service.png"}
+                                  alt={sub.name || sub.title}
+                                  className="w-12 h-12 object-cover rounded"
+                                  onError={e => { e.target.src = "/default-service.png"; }}
+                                />
                         <div>
-                          <h3 className="font-semibold text-lg mb-3">Available Sub-services</h3>
-                          <div className="grid grid-cols-2 gap-4">
-                            {allSubs.map(sub => {
-                              console.log('Subservice data:', sub); // Debug log
-                              const subKey = sub._id || sub.name || sub.title;
-                              const isSelected = subServices.some(
-                                s => (s._id || s.name || s.title) === subKey
-                              );
-                              return (
-                                <div
-                                  key={subKey}
-                                  className={`bg-white border rounded-xl shadow-sm flex flex-col items-center p-2 cursor-pointer transition-all duration-200 relative ${
-                                    isSelected
-                                      ? 'border-blue-500 ring-2 ring-blue-200'
-                                      : 'border-gray-200 hover:border-blue-400'
-                                  }`}
-                                  style={{ minWidth: 120 }}
+                                  <div className="font-medium text-gray-800">{sub.name || sub.title}</div>
+                                  <div className="text-green-600 font-bold text-sm">₹{sub.price || 0}</div>
+                                </div>
+                                {/* Delete icon for subservice */}
+                                <button
+                                  className="absolute top-1 right-1 text-red-500 hover:text-red-700 p-1 rounded-full bg-white shadow"
+                                  title="Remove subservice"
                                   onClick={() => {
-                                    if (isSelected) {
-                                      const updatedItem = {
-                                        ...item,
-                                        subServices: (item.subServices || []).filter(
-                                          s => (s._id || s.name || s.title) !== subKey
-                                        ),
-                                      };
-                                      updateCartItem(updatedItem);
-                                    } else {
-                                      const updatedItem = {
-                                        ...item,
-                                        subServices: [
-                                          ...(Array.isArray(item.subServices) ? item.subServices : []),
-                                          sub,
-                                        ],
-                                      };
-                                      updateCartItem(updatedItem);
-                                    }
+                                    updateCartItem({
+                                      ...item,
+                                      subServices: subServices.filter((s, i) => i !== subIdx)
+                                    });
                                   }}
                                 >
-                                  {isSelected && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const updatedItem = {
-                                          ...item,
-                                                                                  subServices: (item.subServices || []).filter(
-                                          s => (s._id || s.name || s.title) !== subKey
-                                        ),
-                                        };
-                                        updateCartItem(updatedItem);
-                                      }}
-                                      className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center transition-colors z-10"
-                                      title="Remove this sub-service"
-                                    >
-                                      <FiX size={12} />
-                                    </button>
-                                  )}
-                                  <img
-                                    src={sub.image ? `${BASE_URL}/uploads/${sub.image}` : "/default-service.png"}
-                                    alt={sub.title}
-                                    className="w-full h-20 object-cover rounded-lg mb-2"
-                                    onError={e => { 
-                                      e.target.src = "/default-service.png";
-                                      e.target.onerror = null;
-                                    }}
-                                  />
-                                  <div className="w-full px-1">
-                                    <div className="text-sm font-semibold text-gray-800 mb-1 truncate">
-                                      {sub.name || sub.title || 'Unnamed Service'}
-                                      {safeText(sub.name) || safeText(sub.title) || 'Unnamed Service'}
-                                    </div>
-                                    <div className="text-green-600 font-bold text-sm">₹{sub.price || 0}</div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                  <FiTrash2 size={16} />
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1.5 self-end sm:self-center transition-colors duration-200 mt-2 sm:mt-0 bg-red-50 hover:bg-red-100 text-red-600"
-                    >
-                      <FiTrash2 size={16} />
-                      <span className="text-xs sm:text-sm">Remove</span>
-                    </button>
+                   
                   </div>
                 </div>
               );
             })}
+            {/* Available Sub-services Slider (outside main box) */}
+            {cartItems.length > 0 && (
+              <div className="my-8 relative">
+                          <h3 className="font-bold text-lg mb-3">Available Sub-services</h3>
+                <button
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full shadow p-2"
+                  style={{ display: 'block' }}
+                  onClick={() => availableSubRef.current && availableSubRef.current.scrollBy({ left: -scrollByAmount, behavior: "smooth" })}
+                  aria-label="Scroll left"
+                >
+                  <FiChevronLeft size={24} />
+                </button>
+                <div
+                  ref={availableSubRef}
+                  className="flex gap-2 overflow-x-auto whitespace-nowrap p-2 m-2 hide-scrollbar"
+                  style={{ scrollBehavior: 'smooth' }}
+                >
+                  {cartItems.flatMap((item, idx) => {
+                    const allSubs = Array.isArray(productSubServices[item.id]) ? productSubServices[item.id] : [];
+                    const subServices = Array.isArray(item.subServices) ? item.subServices : [];
+                    return allSubs.map((sub, subIdx) => {
+                      const subKey = sub._id || sub.name || sub.title || subIdx;
+                      const inCart = subServices.some(
+                        s =>
+                          (s._id && sub._id && s._id === sub._id) ||
+                          (s.name && sub.name && s.name === sub.name)
+                              );
+                              return (
+                        <div
+                          key={item.id + '-' + subKey}
+                          className={`border rounded-xl p-4 bg-white hover:shadow-lg transition-shadow duration-300 flex flex-col items-center w-48 min-h-[200px] relative cursor-pointer flex-shrink-0 ${inCart ? "ring-2 ring-blue-500 border-blue-500" : "hover:shadow"}`}
+                          onClick={() => {
+                            if (inCart) {
+                              updateCartItem({
+                                ...item,
+                                subServices: subServices.filter(
+                                  s =>
+                                    !(
+                                      (s._id && sub._id && s._id === sub._id) ||
+                                      (s.name && sub.name && s.name === sub.name)
+                                    )
+                                ),
+                              });
+                            } else {
+                              updateCartItem({
+                                ...item,
+                                subServices: [
+                                  ...subServices,
+                                  sub,
+                                ],
+                              });
+                            }
+                          }}
+                        >
+                          <img
+                            src={sub.image ? `${BASE_URL}/uploads/${sub.image}` : "/default-service.png"}
+                            alt={sub.name || sub.title}
+                            className="w-40 h-24 object-fill mb-2"
+                            onError={e => { e.target.src = "/default-service.png"; }}
+                          />
+                          <div className="font-semibold text-base text-gray-800 mb-1">{sub.name || sub.title}</div>
+                          <div className="flex justify-between items-center w-full mt-1">
+                            <div className="text-green-600 font-bold text-base">₹{sub.price || 0}</div>
+                          </div>
+                          {inCart && (
+                            <button
+                              className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow hover:bg-red-700"
+                              onClick={e => {
+                                e.stopPropagation();
+                                updateCartItem({
+                                  ...item,
+                                  subServices: subServices.filter(
+                                    s =>
+                                      !(
+                                        (s._id && sub._id && s._id === sub._id) ||
+                                        (s.name && sub.name && s.name === sub.name)
+                                      )
+                                  ),
+                                });
+                              }}
+                              title="Remove"
+                            >
+                              &times;
+                            </button>
+                          )}
+                        </div>
+                              );
+                    });
+                            })}
+                </div>
+                <button
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full shadow p-2"
+                  style={{ display: 'block' }}
+                  onClick={() => availableSubRef.current && availableSubRef.current.scrollBy({ left: scrollByAmount, behavior: "smooth" })}
+                  aria-label="Scroll right"
+                >
+                  <FiChevronRight size={24} />
+                </button>
+              </div>
+            )}
+          
           </div>
+
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 bg-white sticky top-6">
               <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 pb-2 border-b text-gray-900 border-gray-200">
-                Order Summary
+                Payment summary
               </h3>
-              {(() => {
-                const taxRate = 0.18;
-                const taxAmount = subtotal * taxRate;
-                const total = subtotal + taxAmount;
-                return (
-                  <>
-                    <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                      <div className="flex justify-between text-gray-600">
-                        <span className="text-sm">Subtotal</span>
-                        <span className="text-sm">₹{subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-600">
-                        <span className="text-sm">Tax (18%)</span>
-                        <span className="text-sm">₹{taxAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between pt-2 sm:pt-3 border-t border-gray-200">
-                        <span className="font-medium text-sm">Total</span>
-                        <span className="font-bold text-base sm:text-lg text-green-700">
-                          ₹{total.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2 sm:space-y-3">
-                      <button
-                        onClick={() => {
-                          if (!isAuthenticated) {
-                            alert("Please login to proceed with checkout.");
-                            navigate("/login");
-                            return;
-                          }
-                          setShowConfirmation(true);
-                        }}
-                        className="w-full px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors duration-200 shadow-md hover:shadow-lg text-base sm:text-lg bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        <FiCheck size={18} />
-                        Proceed to Checkout
-                      </button>
-                      <button
-                        onClick={clearCart}
-                        className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-colors duration-200 text-sm sm:text-base text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 bg-white hover:bg-red-50"
-                      >
-                        <FiTrash2 size={16} />
-                        Clear Cart
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
+              {/* Discount badge */}
+              <div className="mb-2 flex items-center gap-2">
+                <span className="inline-block bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded">15% OFF on this order!</span>
+              </div>
+              <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                <div className="flex justify-between text-gray-600">
+                  <span className="text-sm">Item total</span>
+                  <span className="text-sm">₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-green-600">
+                  <span className="text-sm">15% Discount</span>
+                  <span className="text-sm">-₹{discount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span className="text-sm">Taxes and Fee</span>
+                  <span className="text-sm">₹{taxAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between pt-2 sm:pt-3 border-t border-gray-200">
+                  <span className="font-medium text-sm">Total amount</span>
+                  <span className="font-bold text-base sm:text-lg text-gray-900">
+                    ₹{total.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-sm">Amount to pay</span>
+                  <span className="font-bold text-base sm:text-lg text-green-700">
+                    ₹{total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              {/* Optional: Tip section */}
+              <div className="mb-4">
+                <div className="font-medium text-sm mb-2">Add a tip to thank the Professional</div>
+                <div className="flex gap-2">
+                  {[50, 75, 100].map((tip) => (
+                    <button
+                      key={tip}
+                      className={`px-3 py-1.5 rounded-lg border text-sm font-semibold ${
+                        selectedTip === tip
+                          ? "bg-blue-50 border-blue-600 text-blue-700"
+                          : "bg-white border-gray-300 text-gray-700 hover:bg-blue-50"
+                      }`}
+                      onClick={() => setSelectedTip(tip)}
+                    >
+                      ₹{tip}
+                      {tip === 75 && (
+                        <span className="ml-2 text-xs text-green-600 bg-green-100 px-1.5 py-0.5 rounded">POPULAR</span>
+                      )}
+                    </button>
+                  ))}
+                  <button
+                    className={`px-3 py-1.5 rounded-lg border text-sm font-semibold ${
+                      selectedTip === "custom"
+                        ? "bg-blue-50 border-blue-600 text-blue-700"
+                        : "bg-white border-gray-300 text-gray-700 hover:bg-blue-50"
+                    }`}
+                    onClick={() => setShowCustomTip(true)}
+                  >
+                    Custom
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">100% of the tip goes to the professional.</div>
+                {showCustomTip && (
+                  <input
+                    type="number"
+                    min={0}
+                    className="mt-2 border rounded px-2 py-1 w-24"
+                    placeholder="Enter tip"
+                    value={customTip}
+                    onChange={e => setCustomTip(Number(e.target.value))}
+                  />
+                )}
+              </div>
+              <div className="space-y-2 sm:space-y-3">
+                <button
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      alert("Please login to proceed with checkout.");
+                      navigate("/login");
+                      return;
+                    }
+                    setShowConfirmation(true);
+                  }}
+                  className="w-full px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors duration-200 shadow-md hover:shadow-lg text-base sm:text-lg bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <FiCheck size={18} />
+                  Proceed to Checkout
+                </button>
+                <button
+                  onClick={clearCart}
+                  className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-colors duration-200 text-sm sm:text-base text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 bg-white hover:bg-red-50"
+                >
+                  <FiTrash2 size={16} />
+                  Clear Cart
+                </button>
+              </div>
             </div>
           </div>
         </div>
+        {suggestions.length > 0 && (
+              <div className="my-8 relative">
+                <h3 className="font-bold text-lg mb-3">You may also like</h3>
+                <button
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full shadow p-2"
+                  style={{ display: 'block' }}
+                  onClick={() => suggestionsRef.current && suggestionsRef.current.scrollBy({ left: -scrollByAmount, behavior: "smooth" })}
+                  aria-label="Scroll left"
+                >
+                  <FiChevronLeft size={24} />
+                </button>
+                <div
+                  ref={suggestionsRef}
+                  className="flex gap-2 overflow-x-auto whitespace-nowrap pb-2 hide-scrollbar"
+                  style={{ scrollBehavior: 'smooth' }}
+                >
+                  {suggestions.map((sub, idx) => {
+                    // Find if this suggestion is in any cart item's subServices
+                    const cartItem = cartItems.find(item =>
+                      (item.subServices || []).some(
+                        s =>
+                          (s._id && sub._id && s._id === sub._id) ||
+                          (s.name && sub.name && s.name === sub.name)
+                      )
+                    );
+                    const inCart = !!cartItem;
+                    return (
+                      <div
+                        key={sub.parentProductId + '-' + (sub._id || sub.name || idx)}
+                        className={`border rounded-xl p-4 bg-white hover:shadow-lg transition-shadow duration-300 flex flex-col items-center w-48 min-h-[200px] relative cursor-pointer flex-shrink-0 ${inCart ? "ring-2 ring-blue-500 border-blue-500" : "hover:shadow"}`}
+                        onClick={() => {
+                          navigate(`/subservices/${sub.parentProductId}`);
+                        }}
+                      >
+                        <img
+                          src={sub.image ? `${BASE_URL}/uploads/${sub.image}` : "/default-service.png"}
+                          alt={sub.name || sub.title}
+                          className="w-40 h-24 object-fill mb-2"
+                          onError={e => { e.target.src = "/default-service.png"; }}
+                        />
+                        <div className="font-semibold text-base text-gray-800 mb-1">{sub.name || sub.title}</div>
+                        <div className="flex justify-between items-center w-full mt-1">
+                          <div className="text-green-600 font-bold text-base">₹{sub.price || 0}</div>
+                          <div className="text-xs text-gray-500 mb-2 ml-2">from {sub.parentProductName}</div>
+                        </div>
+                        {/* Remove button is not needed here anymore */}
+                      </div>
+              );
+            })}
+                </div>
+                <button
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full shadow p-2"
+                  style={{ display: 'block' }}
+                  onClick={() => suggestionsRef.current && suggestionsRef.current.scrollBy({ left: scrollByAmount, behavior: "smooth" })}
+                  aria-label="Scroll right"
+                >
+                  <FiChevronRight size={24} />
+                </button>
+          </div>
+            )}
       </div>
 
  {/* Order Confirmation Modal */}
@@ -768,7 +956,29 @@ export default function Cart() {
         </button>
         <button
           className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-base bg-green-600 hover:bg-green-700 text-white shadow-md transition-all disabled:opacity-50"
-          onClick={placeOrder}
+          onClick={() => {
+            if (!validateForm()) return;
+            navigate("/payment", {
+              state: {
+                orderDetails: {
+                  items: cartItems,
+                  total: total,
+                  address: {
+                    houseNumber,
+                    street,
+                    landmark,
+                    addressType,
+                    fullAddress: `${houseNumber}, ${street}${landmark ? `, Landmark: ${landmark}` : ""} (${addressType})`,
+                    timeSlot: `${formatDateYMD(selectedDate)} at ${formatTimeHM(selectedTime)}`
+                  },
+                  // Optionally add user info for Razorpay prefill
+                  // userName: user?.name,
+                  // userEmail: user?.email,
+                  // userPhone: user?.phone,
+                }
+              }
+            });
+          }}
           disabled={isPlacingOrder}
         >
           {isPlacingOrder ? (
@@ -804,7 +1014,14 @@ export default function Cart() {
     </div>
   </div>
 )}
-
+    {showToast && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+    <div className="bg-white text-green-700 border border-green-400 shadow-2xl rounded-xl px-8 py-6 text-lg font-semibold flex items-center gap-3 pointer-events-auto" style={{ minWidth: '260px', minHeight: '80px' }}>
+      <FiCheck size={28} className="text-green-600" />
+      <span>{toastMsg}</span>
+    </div>
+  </div>
+)}
     </div>
   );
 }

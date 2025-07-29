@@ -1,5 +1,6 @@
 // src/App.jsx
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect, useState, useContext } from 'react';
 import Navbar from './Components/Navbar';
 import PartnerNavbar from './Components/PartnerNavbar';
 import Footer from './Components/Footer';
@@ -38,14 +39,8 @@ import CartBar from "./Components/CartBar";
 import MobileStickyNav from './Components/MobileStickyNav';
 import LanguageSwitcher from './Components/LanguageSwitcher';
 import Subservices from './pages/Subservices';
-import TermAndConditions from './pages/TermAndConditions';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import AntiDiscriminationPolicy from './pages/Anti-Discrimination-Ploicy';
-import PolicyModal from './pages/PolicyModal';
-import PartnerPolicyModal from './pages/PartnerPolicyModal';
-import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "./context/AuthContext";
-
+import { AuthContext } from './context/AuthContext';
+import Payment from './pages/Payment';
 export default function App() {
   const location = useLocation();
   const { user, setUser } = useContext(AuthContext);
@@ -98,14 +93,6 @@ export default function App() {
   // Show PolicyModal for users, PartnerPolicyModal for partners
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Show user modal if logged in as user and not accepted policies */}
-      {user && !user.privacyAccepted && !user.termsAccepted && (
-        <PolicyModal user={user} refreshUser={fetchUserProfile} />
-      )}
-      {/* Show partner modal if logged in as partner and not accepted policies */}
-      {partner && isPartnerRoute && (!partner.privacyAccepted || !partner.termsAccepted) && (
-        <PartnerPolicyModal partner={partner} refreshPartner={fetchPartnerProfile} />
-      )}
       {isPartnerRoute ? <PartnerNavbar /> : <Navbar />}
       <main className="flex-grow">
         <Routes>
@@ -132,21 +119,23 @@ export default function App() {
           <Route path="/partner-home" element={<PartnersHome />} />
           <Route path="/partner-earnings" element={<PartenrsEarning />} />
           <Route path="/partner-orders" element={<PartenrsOrders />} />
-          <Route path="/blog" element={<Blog />} />
+           <Route path="/blog" element={<Blog />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/terms" element={<TermAndConditions />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/anti-discrimination-policy" element={<AntiDiscriminationPolicy />} />
-          {/* for users */}
+          <Route path="/payment" element={<Payment />} />
+          //for users
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
-          {/* for partners */}
+
+          //for partners
           <Route path="/reset-password-partner/:token" element={<PartnerResetPassword />} />
           <Route path="/forget-password-partner" element={<PartnerForgotPassword />} />
-          <Route path="/partner-update-profile" element={<PartnerUpdateProfile />} />
+
+
+           <Route path="/partner-update-profile" element={<PartnerUpdateProfile />} />
           <Route path="/partner-Support" element={<PartnerSupportPage />} />
         </Routes>
       </main>
+
       <CartBar />
       <MobileStickyNav/>
       <Footer />

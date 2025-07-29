@@ -273,10 +273,10 @@ export default function MyOrders() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>
-                          Provider <b>{order.assignedPartner.name}</b> accepted your request. <b>Confirmed!</b>
+                          Provider <b>{order.assignedPartner.name}</b> accepted your request. They will contact you soon. 
                         </span>
                       </div>
-                      <div className="pl-7 text-sm">
+                      {/* <div className="pl-7 text-sm">
                         <div>
                           <span className="font-bold">Email:</span>{" "}
                           <a href={`mailto:${order.assignedPartner.email}`} className="underline text-blue-700">
@@ -291,7 +291,7 @@ export default function MyOrders() {
                             </a>
                           </div>
                         )}
-                      </div>
+                      </div> */}
                     </div>
                   );
                 }

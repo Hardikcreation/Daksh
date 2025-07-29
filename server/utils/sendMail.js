@@ -23,7 +23,6 @@ const sendSupportMail = async ({ name, email, message }) => {
   });
 };
 
-
 export async function sendMail({ to, subject, html }) {
   let transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",

@@ -79,6 +79,8 @@ const orderSchema = new mongoose.Schema({
   partnerFeedback: feedbackSchema,
   customerFeedback: feedbackSchema,
 
+  paymentId: { type: String }, // Razorpay/Stripe payment id
+
   createdAt: {
     type: Date,
     default: Date.now,
