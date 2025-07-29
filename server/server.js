@@ -36,10 +36,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
-  'https://daksh-client.onrender.com',
-'https://daksh-admin.onrender.com',
-  'https://daksh.smartbhopal.city',
-  'https://admin8359dakshkarigar.smartbhopal.city'
+  'https://daksh-client.onrender.com'
 ];
 
 // ✅ CORS middleware
