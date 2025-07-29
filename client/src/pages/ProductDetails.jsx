@@ -293,7 +293,7 @@ export default function ProductDetails() {
                     <div
                       className={`border rounded-xl p-4 bg-white hover:shadow-lg transition-shadow duration-300 flex flex-col items-center w-48 min-h-[220px] relative cursor-pointer`}
                       onClick={() => {
-                        navigate(`/subservices/${sub.parentProductId}`);
+                        navigate(`/product/${sub.parentProductId}`);
                       }}
                     >
                       <img

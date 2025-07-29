@@ -690,7 +690,7 @@ export default function Cart() {
                         key={sub.parentProductId + '-' + (sub._id || sub.name || idx)}
                         className={`border rounded-xl p-4 bg-white hover:shadow-lg transition-shadow duration-300 flex flex-col items-center w-48 min-h-[200px] relative cursor-pointer flex-shrink-0 ${inCart ? "ring-2 ring-blue-500 border-blue-500" : "hover:shadow"}`}
                         onClick={() => {
-                          navigate(`/subservices/${sub.parentProductId}`);
+                          navigate(`/product/${sub.parentProductId}`);
                         }}
                       >
                         <img

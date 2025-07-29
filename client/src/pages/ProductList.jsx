@@ -91,7 +91,7 @@ export default function ProductList() {
                 <div
                   key={product._id}
                   className="flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 shadow-sm p-3 transition-all duration-300 group hover:border-blue-200 hover:shadow-md"
-                  onClick={() => navigate(`/subservices/${product._id}`)}
+                  onClick={() => navigate(`/product/${product._id}`)}
                 >
                   <div className="">
                     <img
@@ -364,7 +364,7 @@ export default function ProductList() {
                     return (
                       <Link
                         key={sub._id || sub.name || idx}
-                        to={`/subservices/${product._id}`}
+                        to={`/product/${product._id}`}
                         className="relative h-40 rounded-lg overflow-hidden bg-cover bg-center shadow-md group transition-all duration-300 hover:shadow-lg"
                         style={{
                           backgroundImage: `url(${sub.image ? `${BASE_URL}/uploads/${sub.image}` : '/default-service-icon.svg'})`,
@@ -399,7 +399,7 @@ export default function ProductList() {
                     return (
                       <Link
                         key={sub._id || sub.name || idx}
-                        to={`/subservices/${product._id}`}
+                        to={`/product/${product._id}`}
                         className="relative h-40 rounded-lg overflow-hidden bg-cover bg-center shadow-md group transition-all duration-300 hover:shadow-lg"
                         style={{
                           backgroundImage: `url(${sub.image ? `${BASE_URL}/uploads/${sub.image}` : '/default-service-icon.svg'})`,

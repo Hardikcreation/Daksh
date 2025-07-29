@@ -202,7 +202,7 @@ export default function Subservices() {
                       key={idx} 
                       className={`min-w-[200px] max-w-[220px] border rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 relative cursor-pointer group ${inCart ? 'ring-2 ring-blue-500' : ''}`}
                       onClick={() => {
-                        navigate(`/subservices/${sub.parentProductId}`);
+                        navigate(`/product/${sub.parentProductId}`);
                       }}
                     >
                       <div className="h-32 bg-gray-100 overflow-hidden">
