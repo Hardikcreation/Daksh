@@ -39,10 +39,11 @@ const allowedOrigins = [
   'https://daksh-client.onrender.com',
   'https://daksh-admin.onrender.com',
   'https://admindds.ddsonline.online',
-  'https://callcentrepanel.ddsonline.online/login',
-  'https://ddsonline.online/'
-
-
+  'https://callcentrepanel.ddsonline.online',
+  'https://ddsonline.online',
+  'https://ddsonline.in',
+  'https://admindds.ddsonline.in',
+  'https://callcentrepanel.ddsonline.in',
 ];
 
 // ✅ CORS middleware
