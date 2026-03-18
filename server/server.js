@@ -38,8 +38,8 @@ const allowedOrigins = [
   'http://localhost:5175',
   'https://daksh-client.onrender.com',
   'https://daksh-admin.onrender.com',
-  'https://ddsonline.in',
-  'https://admindds.ddsonline.in',
+  // 'https://ddsonline.in',
+  // 'https://admindds.ddsonline.in',
   'https://callcentrepanel.ddsonline.in',
 ];
 
